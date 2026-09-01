@@ -107,3 +107,8 @@ Email must be unique
 Order cannot exceed stock
 User cannot cancel shipped order
 Discount cannot exceed 30%
+
+################################################## PUT VS PATCH ###########################################
+
+PUT - replace the resource representation
+PATCH - Modify only specific feilds

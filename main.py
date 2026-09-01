@@ -34,6 +34,11 @@ class UserResponse(SQLModel):
     name: str
     age: int
 
+#To patch the feilds
+class UserUpdate(SQLModel):
+    name: str | None =pyField(default=None, min_length=2, max_length=50)
+    age: int | None = pyField(default=None, ge=0,le=120)
+
 #CREATE DB TABLE
 def create_db_and_table():
     SQLModel.metadata.create_all(engine)
@@ -151,6 +156,36 @@ def update_user(userobj: User_create,user_id: int):
         session.refresh(user)
 
         return user
+
+#PATCH USER FEILDS
+@app.patch(
+    "/users/{user_id}",
+    response_model=UserResponse
+    )
+def patch_user(userobj: UserUpdate,user_id: int):
+    with Session(engine) as session:
+        user=session.get(User,user_id)
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User not found with id {user_id}"
+            )
+        if userobj.name is not None:
+            user.name=userobj.name
+        if userobj.age is not None:
+        #Business Logic
+            if userobj.age < 18:
+                raise HTTPException(
+                status_code=400,
+                detail="User must be al least 18 years"
+            )
+        ###############
+            user.age=userobj.age
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        return user
+
 
 #DELETE USER with user id
 @app.delete("/users/{user_id}")
