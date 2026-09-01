@@ -112,3 +112,113 @@ Discount cannot exceed 30%
 
 PUT - replace the resource representation
 PATCH - Modify only specific feilds
+
+############################################## HTTP Headers ###############################################
+
+Headers are metadata about an HTTP request or response. HTTP HAS 4 pieces
+
+HTTP REQUEST
+│
+├── Method
+│     POST
+│
+├── URL
+│     /users
+│
+├── Headers
+│     Content-Type: application/json
+│     Authorization: Bearer ...
+│
+└── Body
+      {
+          "name": "Rahul",
+          "age": 25
+      }
+
+This is the most important header for our current application.
+
+----------->When we send:
+
+Content-Type: application/json
+
+we're telling FastAPI:
+
+"The request body is JSON."
+
+So:
+
+Browser
+   │
+   │ Content-Type: application/json
+   │
+   │ {
+   │   "name": "Rahul",
+   │   "age": 25
+   │ }
+   ↓
+FastAPI
+
+FastAPI knows to parse the body as JSON.
+
+####################### Authorization ##################################
+
+This one:
+
+Authorization: Bearer <token>
+
+You've probably seen it in APIs.
+
+For example:
+
+GET /users/10
+Authorization: Bearer eyJhbGciOi...
+
+Conceptually:
+
+Client
+   │
+   │ Authorization: Bearer TOKEN
+   ↓
+Backend
+   │
+   │ verify token
+   ↓
+Allowed?
+   │
+   ├── No → 401
+   │
+   └── Yes
+        ↓
+      Process request
+
+Status codes fit into this
+
+Suppose the API requires authentication.
+
+No credentials:
+
+GET /users
+
+could produce:
+
+401 Unauthorized
+
+Valid credentials but insufficient permissions:
+
+DELETE /users/5
+
+could produce:
+
+403 Forbidden
+
+So:
+
+401
+↓
+"I don't have valid authentication."
+
+403
+↓
+"I know who you are, but you're not allowed to do this."
+
+This distinction is important.

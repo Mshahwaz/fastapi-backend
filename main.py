@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException , status
+from fastapi import FastAPI, HTTPException , status, Header
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 # from pydantic import Field -> This is create issue with SQL model field so will use alias
 from pydantic import Field as pyField
@@ -204,3 +204,20 @@ def del_user(user_id: int):
         }
 ########################################################################################
 
+# Access headers
+@app.get("/headers")
+def read_headers(
+    user_agent: str | None = Header(default=None)
+    ):
+    return {
+        "user_agent":user_agent
+    }
+
+#Custom Header
+@app.get("/client-info")
+def client_version(
+    client_version: str | None = Header(default=True)
+    ):
+    return {
+        "client_version":client_version
+    }
