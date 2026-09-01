@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException 
+from fastapi import FastAPI, HTTPException , status
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from fastapi.responses import FileResponse
 
@@ -39,8 +39,9 @@ create_db_and_table()
 def home():
     return FileResponse("fronend/index.html")
 
+######################### CRUD OPERATIONS #######################################
 #CREATE USER 
-@app.post("/users")
+@app.post("/users",status_code=status.HTTP_201_CREATED)
 def create_user(user: User_create):
     with Session(engine) as session:
         new_user=User(
@@ -63,7 +64,25 @@ def get_users():
 
         return users
 
-#GET A Single User with user id
+####################### Query Parameter implementation ##################################
+@app.get("/users/search")
+def search_users(name: str | None = None):
+    with Session(engine) as session:
+
+        users=session.exec(
+            select(User)
+            ).all()
+    if name:
+        users=[
+            user for user in users if user.name.lower() == name.lower() # list comnprehension
+        ]
+        return users
+    raise HTTPException(
+        status_code=404,
+        detail="No search Found"
+    )
+
+# GET A Single User with user id
 @app.get("/users/{user_id}")
 def get_user(user_id: int):
     with Session(engine) as session:
@@ -110,3 +129,5 @@ def del_user(user_id: int):
         return {
             "message" : f"User with id {user_id} has been removed successfully"
         }
+########################################################################################
+
