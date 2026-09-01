@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException , status
 from sqlmodel import Field, Session, SQLModel, create_engine, select
+# from pydantic import Field -> This is create issue with SQL model field so will use alias
+from pydantic import Field as pyField
 from fastapi.responses import FileResponse
 
 app=FastAPI()
@@ -15,14 +17,20 @@ DATABASE_URL=(
 #create sqlalchemy engine engine that knows how our application connects to PostgreSQL.
 engine=create_engine(DATABASE_URL)
 
-#Request Model from client side
+#Request Model from client side with schema validation
 class User_create(SQLModel):
-    name: str
-    age: int
+    name: str = pyField(min_length=2,max_length=50)
+    age: int = pyField(ge=0,le=120)
 
-#describing db table(model) using python
+#DATABASE MODEL for Database ops
 class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    name: str
+    age: int 
+
+#RESPONSE MODEL for client query response
+class UserResponse(SQLModel):
+    id: int
     name: str
     age: int
 
@@ -41,21 +49,35 @@ def home():
 
 ######################### CRUD OPERATIONS #######################################
 #CREATE USER 
-@app.post("/users",status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/users",
+    status_code=status.HTTP_201_CREATED,
+    response_model=UserResponse
+    )
 def create_user(user: User_create):
     with Session(engine) as session:
-        new_user=User(
+        #Business Rule 
+        if user.age < 18:
+            raise HTTPException(
+                status_code=400,
+                detail="User  must be al least 18 years"
+            )
+        ###############
+        db_user=User(
             name = user.name,
             age = user.age
         ) #creating DB user obj mapped to user table
-        session.add(new_user)
+        session.add(db_user)
         session.commit()
-        session.refresh(new_user)
-        return new_user
+        session.refresh(db_user)
+        return db_user
 
 
 #GET ALL USERS
-@app.get("/users")
+@app.get(
+    "/users",
+    response_model=list[UserResponse]
+    )
 def get_users():
     with Session(engine) as session:
         users= session.exec(
@@ -65,7 +87,10 @@ def get_users():
         return users
 
 ####################### Query Parameter implementation ##################################
-@app.get("/users/search")
+@app.get(
+    "/users/search",
+    response_model=list[UserResponse]
+    )
 def search_users(name: str | None = None):
     with Session(engine) as session:
 
@@ -83,7 +108,10 @@ def search_users(name: str | None = None):
     )
 
 # GET A Single User with user id
-@app.get("/users/{user_id}")
+@app.get(
+    "/users/{user_id}",
+    response_model=UserResponse
+    )
 def get_user(user_id: int):
     with Session(engine) as session:
         user=session.get(User, user_id)
@@ -95,9 +123,19 @@ def get_user(user_id: int):
         return user
 
 #UPDATE USER DATA
-@app.put("/users/{user_id}")
+@app.put(
+    "/users/{user_id}",
+    response_model=UserResponse
+    )
 def update_user(userobj: User_create,user_id: int):
     with Session(engine) as session:
+        #Business Logic
+        if userobj.age > 18:
+            raise HTTPException(
+                status_code=400,
+                detail="User must be al least 18 years"
+            )
+        ###############           
         user=session.get(User, user_id)
         if not user:
             raise HTTPException(
@@ -112,7 +150,7 @@ def update_user(userobj: User_create,user_id: int):
         session.commit()
         session.refresh(user)
 
-        return get_user(user_id)
+        return user
 
 #DELETE USER with user id
 @app.delete("/users/{user_id}")

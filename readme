@@ -19,3 +19,91 @@
 502 Bad Gateway
 503 Service Unavailable
 504 Gateway Timeout
+
+
+######################### REQUEST MODEL VS DATABASE MODEL VS RESPONSE MODEL ###########################################
+
+             CLIENT
+                │
+                │ JSON
+                ↓
+        ┌─────────────────┐
+        │ Request Model   │
+        │                 │
+        │ name            │
+        │ age             │
+        └────────┬────────┘
+                 │
+                 ↓
+          BACKEND LOGIC
+                 │
+                 ↓
+        ┌─────────────────┐
+        │ Database Model  │
+        │                 │
+        │ id              │
+        │ name            │
+        │ age             │
+        │ internal fields │
+        └────────┬────────┘
+                 │
+                 ↓
+             PostgreSQL
+                 │
+                 ↓
+        ┌─────────────────┐
+        │ Response Model  │
+        │                 │
+        │ id              │
+        │ name            │
+        │ age             │
+        └────────┬────────┘
+                 │
+                 ↓
+              CLIENT
+
+########################## Validation on client input data acc to Schema validation/business logic #####################################
+
+Request
+   ↓
+Schema validation
+   ↓
+Business validation
+   ↓
+Backend logic
+   ↓
+Database
+
+Example: Our application only allows users who are at least 18 years old. (Business Logic)
+
+age: int = PydanticField(
+    ge=18,
+    le=120
+)
+"Age must be an integer between 0 and 120" -- is a data/schema constraint.
+"Only adults can register" - app/business rule/logic
+
+
+Schema validation ------ handeled by pydantic/fastapi
+
+Is the request structurally valid? 
+
+example : 
+
+age is an integer        ✅
+age is -5                ❌
+name is too long         ❌
+name is missing          ❌
+
+
+Business logic ------- handled by app/backend code
+
+Does this request comply with our application's rules?
+
+examples :
+
+User must be 18+
+Email must be unique
+Order cannot exceed stock
+User cannot cancel shipped order
+Discount cannot exceed 30%
