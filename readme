@@ -222,3 +222,83 @@ So:
 "I know who you are, but you're not allowed to do this."
 
 This distinction is important.
+
+############################## Login + Authentication ######################################
+flow : 
+
+             CLIENT
+                │
+                │ username + password
+                ↓
+             POST /login
+                │
+                ↓
+             FASTAPI
+                │
+                │ verify credentials
+                ↓
+             TOKEN
+                │
+                ↓
+             CLIENT
+                │
+                │ Authorization: Bearer TOKEN
+                ↓
+          Protected API
+
+Our token is:
+
+abc123
+
+Every user gets the same token.
+
+So:
+
+Shah → abc123
+Amit → abc123
+Priya → abc123
+
+That's obviously useless.
+
+Also, the backend doesn't know:
+
+Who owns this token?
+When was it issued?
+When does it expire?
+What permissions does it represent?
+
+A real authentication system needs answers to those questions.
+
+That's where JWT comes in.
+
+13. JWT will solve a different problem
+
+A JWT can carry claims such as:
+
+{
+    "sub": "123",
+    "role": "admin",
+    "exp": 1780000000
+}
+
+and is cryptographically signed.
+
+The flow becomes:
+
+Login
+  ↓
+Verify username/password
+  ↓
+Create signed JWT
+  ↓
+Client
+  ↓
+Authorization: Bearer <JWT>
+  ↓
+Backend
+  ↓
+Verify JWT signature + claims
+  ↓
+Identify user
+  ↓
+Authorization/business logic

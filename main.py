@@ -1,11 +1,13 @@
-from fastapi import FastAPI, HTTPException , status, Header
+from fastapi import FastAPI, HTTPException , status, Header, Depends
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 # from pydantic import Field -> This is create issue with SQL model field so will use alias
-from pydantic import Field as pyField
+from pydantic import Field as pyField , BaseModel
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 
 app=FastAPI()
-
+security=HTTPBearer()
 ############################## DATABASE SETUP BEGIN ##########################
 
 #DATABASE URL -->Docker implementation
@@ -204,20 +206,75 @@ def del_user(user_id: int):
         }
 ########################################################################################
 
-# Access headers
-@app.get("/headers")
-def read_headers(
-    user_agent: str | None = Header(default=None)
-    ):
-    return {
-        "user_agent":user_agent
-    }
+# user-agent headers
+# @app.get("/headers")
+# def read_headers(
+#     user_agent: str | None = Header(default=None)
+#     ):
+#     return {
+#         "user_agent":user_agent
+#     }
 
-#Custom Header
-@app.get("/client-info")
-def client_version(
-    client_version: str | None = Header(default=True)
-    ):
+# #Custom Header
+# @app.get("/client-info")
+# def client_version(
+#     client_version: str | None = Header(default=True)
+#     ):
+#     return {
+#         "client_version":client_version
+#     }
+###########################################################################################
+
+# TOY Login for practice
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+fake_users={
+    "shah":{
+        "username":"shah",
+        "password": "secret"
+    }
+}
+
+#Login Authentication
+@app.post(
+    "/login",
+    )
+def login(login_data: LoginRequest):
+    user=fake_users.get(login_data.username)
+    if not user:
+        raise HTTPException(
+            status_code=401, # 401 unauthorised
+            detail="Inavlid username and password"
+        )
+    if user["password"] != login_data.password:
+        raise HTTPException(
+            status_code=401,
+            detail="Inavlid username and password"
+        )
     return {
-        "client_version":client_version
+        "message" : "Login Successfull",
+        "access_token":"abc123", #fake token will used in authorization header for user authorization after login
+        "token_type":"bearer" 
+    }       
+
+#Protected Endpoint using authorization
+
+@app.get("/protected")
+def protected_route(
+    # authorization: str | None = Header(default=None)
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+    ):
+    #debug 
+    # print("TOKEN:", credentials.credentials)
+
+    if credentials.credentials != "abc123":
+        raise HTTPException(
+            status_code=401,
+            detail="Not Authenticated invalid token"
+        )
+    return {
+        "message":"You are authenticated"
     }
