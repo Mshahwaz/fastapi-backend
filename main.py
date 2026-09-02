@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException , status, Header, Depends
+from fastapi import FastAPI, HTTPException , status, Header, Depends, Request
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from pydantic import Field as pyField , BaseModel
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
@@ -82,9 +82,6 @@ def register_user(user: User_create):
     ###############
     with Session(engine) as session:
         hashed_password = password_hash.hash(user.password)
-        #debug
-        # print(hashed_password)
-        #########
         db_user=User(
             name = user.name,
             age = user.age,
@@ -189,8 +186,6 @@ def patch_user(userobj: UserUpdate,user_id: int):
 def get_current_user(
 credentials: HTTPAuthorizationCredentials = Depends(security)
     ):
-    #debug 
-    # print("TOKEN:", credentials.credentials)
     token=credentials.credentials
     try:
         payload=jwt.decode(
@@ -240,13 +235,6 @@ def require_admin(
 #DELETE USER with user id (Protected Endpoint only admin role can delete a user)
 @app.delete("/users/{user_id}")
 def del_user(user_id: int,current_user: User = Depends(require_admin)):
-    # ########### Check if a user is a admin or normal user ################ -- Handeled by require_admin fn
-    # if current_user.role != "admin":
-    #     raise HTTPException(
-    #         status_code=403,
-    #         detail="Admin Access required"
-    #     )
-    # ####################################################################
     with Session(engine) as session:
         user=session.get(User, user_id)
         if not user:
@@ -285,10 +273,7 @@ def login(login_data: LoginRequest):
                 status_code=401,
                 detail="Invalid Username or password"
             )
-    #debug
-    # print(f"user applied hash -{password_hash.hash(login_data.password)}")
-    # print(f" DB stored Hash - {db_user.password}")
-    #################################################
+
     expire=datetime.now(timezone.utc)+timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload={
         "sub":db_user.username,
@@ -302,7 +287,6 @@ def login(login_data: LoginRequest):
     )
     return {
         "message" : "Login Successfull",
-        # "access_token":"abc123", #fake token will used in authorization header for user authorization after login
         "access_token":token, #Generated JWT token
         "token_type":"bearer" 
     }
@@ -330,3 +314,23 @@ def admin_dashboard(
         "message" : " Welcome to Admin Dashboard ",
         "user": current_user.name
     }
+########################################### ERROR (GLOBAL EXCEPTION HANDLING) #######################
+
+# @app.get("/test-error")
+# def test_error():
+#     number = 10 / 0
+#     return {
+#         "result": number
+#     }
+
+@app.exception_handler(Exception)
+async def global_exception_handler(
+    request: Request,
+    exe: Exception
+    ):
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail":"Internal server error occurred"
+        }
+    )

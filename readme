@@ -675,3 +675,52 @@ get_current_user()
    admin check
        ↓
    endpoint
+
+
+################################# ERRORS ##################################################################
+
+Backend ERRORS : Expected erros (4XX , 5XX)
+
+Intentioal Erros: Unexpected erros  (CAUSES Internal server error)
+
+Expected API problem
+        ↓
+HTTPException
+        ↓
+Controlled HTTP response
+
+Unexpected programming/system problem (ex. ZeroDivisionError)
+        ↓
+Python Exception
+        ↓
+500 Internal Server Error
+
+global exception handling?
+
+Imagine you have 50 endpoints.
+
+You don't want every endpoint to contain:
+
+try:
+    ...
+except SomeException:
+    ...
+
+Instead, FastAPI allows you to define a handler that says:
+
+"Whenever this particular exception occurs anywhere in my application, handle it this way."
+
+Conceptually:
+
+                 Any endpoint
+                     │
+                     ▼
+              Exception occurs
+                     │
+                     ▼
+          Global exception handler
+                     │
+                     ▼
+              Standard response
+
+This becomes particularly useful for unexpected errors.
