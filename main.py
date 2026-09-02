@@ -4,6 +4,8 @@ from sqlmodel import Field, Session, SQLModel, create_engine, select
 from pydantic import Field as pyField , BaseModel
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from datetime import datetime, timedelta, timezone
+from jose import jwt, JWTError
 
 
 app=FastAPI()
@@ -238,25 +240,51 @@ fake_users={
     }
 }
 
+SECRET_KEY="my-super-secret-key"
+ALGORITHM="HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
 #Login Authentication
 @app.post(
     "/login",
     )
 def login(login_data: LoginRequest):
-    user=fake_users.get(login_data.username)
-    if not user:
+
+    if (
+        login_data.username not in fake_users
+        or fake_users[login_data.username]["password"] != login_data.password
+    ):
         raise HTTPException(
             status_code=401, # 401 unauthorised
             detail="Inavlid username and password"
         )
-    if user["password"] != login_data.password:
-        raise HTTPException(
-            status_code=401,
-            detail="Inavlid username and password"
-        )
+        # print(expire)# debug
+
+    # user=fake_users.get(login_data.username)
+    # if not user:
+    #     raise HTTPException(
+    #         status_code=401, # 401 unauthorised
+    #         detail="Inavlid username and password"
+    #     )
+    # if user["password"] != login_data.password:
+    #     raise HTTPException(
+    #         status_code=401,
+    #         detail="Inavlid username and password"
+    #     )
+    expire=datetime.now(timezone.utc)+timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload={
+        "sub":login_data.username,
+        "exp":expire
+    }
+    token =jwt.encode(
+        payload,
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
     return {
         "message" : "Login Successfull",
-        "access_token":"abc123", #fake token will used in authorization header for user authorization after login
+        # "access_token":"abc123", #fake token will used in authorization header for user authorization after login
+        "access_token":token, #Generated JWT token
         "token_type":"bearer" 
     }       
 
@@ -269,12 +297,30 @@ def protected_route(
     ):
     #debug 
     # print("TOKEN:", credentials.credentials)
-
-    if credentials.credentials != "abc123":
+    token=credentials.credentials
+    try:
+        payload=jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+        username=payload.get("sub")
+        if username is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid Token"
+            )
+    except JWTError:
         raise HTTPException(
             status_code=401,
-            detail="Not Authenticated invalid token"
+            detail="Invalid or Expired token"
         )
+    # if credentials.credentials != "abc123":
+    #     raise HTTPException(
+    #         status_code=401,
+    #         detail="Not Authenticated invalid token"
+    #     )
     return {
-        "message":"You are authenticated"
+        "message":"You are authenticated",
+        "username":username
     }

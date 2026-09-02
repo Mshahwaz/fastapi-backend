@@ -302,3 +302,25 @@ Verify JWT signature + claims
 Identify user
   ↓
 Authorization/business logic
+
+JWT - JAVA WEB TOKEN
+
+. What JWT actually looks like
+
+A JWT has three parts:
+
+HEADER.PAYLOAD.SIGNATURE
+
+Example:
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
+eyJzdWIiOiJzaGFoIiwiZXhwIjoxNzU2ODAwMDAwfQ.
+abc123xyz...
+
+The three sections are:
+
+Part	Purpose
+Header	Algorithm and token type
+Payload	Claims/data such as username, role, expiration
+Signature	Proves the token was created by your backend and wasn't modified
+
