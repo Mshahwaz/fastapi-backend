@@ -5,7 +5,10 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
+from pwdlib import PasswordHash
 
+password_hash = PasswordHash.recommended()
+# use it as : hashed_password = password_hash.hash("password")
 app=FastAPI()
 security=HTTPBearer()
 
@@ -59,24 +62,28 @@ create_db_and_table()
 
 #CREATE USER 
 @app.post(
-    "/users",
+    "/register",
     status_code=status.HTTP_201_CREATED,
     response_model=UserResponse
     )
-def create_user(user: User_create):
+def register_user(user: User_create):
+    #Business Rule 
+    if user.age < 18:
+        raise HTTPException(
+            status_code=400,
+            detail="User  must be al least 18 years"
+        )
+    ###############
     with Session(engine) as session:
-        #Business Rule 
-        if user.age < 18:
-            raise HTTPException(
-                status_code=400,
-                detail="User  must be al least 18 years"
-            )
-        ###############
+        hashed_password = password_hash.hash(user.password)
+        #debug
+        # print(hashed_password)
+        #########
         db_user=User(
             name = user.name,
             age = user.age,
             username = user.username,
-            password = user.password
+            password = hashed_password
         ) #creating DB user obj mapped to user table
         session.add(db_user)
         session.commit()
@@ -189,13 +196,6 @@ def del_user(user_id: int):
         }
 #######################################
 
-fake_users={ #Temp local DB user for testing
-    "shah":{
-        "username":"shah",
-        "password": "secret"
-    }
-}
-
 SECRET_KEY="my-super-secret-key"
 ALGORITHM="HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES=30
@@ -205,15 +205,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
     "/login",status_code=status.HTTP_200_OK
     )
 def login(login_data: LoginRequest):
-
-    # if ( ---Fake DB user authentication
-    #     login_data.username not in fake_users
-    #     or fake_users[login_data.username]["password"] != login_data.password
-    # ):
-    #     raise HTTPException(
-    #         status_code=401, # 401 unauthorised
-    #         detail="Inavlid username and password"
-    #     )
     ##################### Actual DB query User authentication ######################
     with Session(engine) as session:
         statement=select(User).where(
@@ -225,11 +216,17 @@ def login(login_data: LoginRequest):
                 status_code=401,
                 detail="Invalid Username or password"
             )
-        if db_user.password != login_data.password:
+        if not password_hash.verify(
+            login_data.password,
+            db_user.password
+        ):
             raise HTTPException(
                 status_code=401,
                 detail="Invalid Username or password"
             )
+    #debug
+    # print(f"user applied hash -{password_hash.hash(login_data.password)}")
+    # print(f" DB stored Hash - {db_user.password}")
     #################################################
     expire=datetime.now(timezone.utc)+timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload={
@@ -287,31 +284,11 @@ credentials: HTTPAuthorizationCredentials = Depends(security)
             )
         return db_user
 
-#Protected Endpoint For User authentication
+#Protected Endpoint (Accessible only for authenticated User)  
 @app.get("/protected")
 def protected_route(
     current_user: User = Depends(get_current_user)
     ):
-    #debug 
-    # print("TOKEN:", credentials.credentials)
-    # token=credentials.credentials
-    # try:
-    #     payload=jwt.decode(
-    #         token,
-    #         SECRET_KEY,
-    #         algorithms=[ALGORITHM]
-    #     )
-    #     username=payload.get("sub")
-    # if username is None:
-    #     raise HTTPException(
-    #         status_code=401,
-    #         detail="Invalid Token"
-    #     )
-    # except JWTError:
-    #     raise HTTPException(
-    #         status_code=401,
-    #         detail="Invalid or Expired token"
-    #     )
     return {
         "message":"You are authenticated",
         "username":current_user.username,

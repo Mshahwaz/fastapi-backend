@@ -478,3 +478,58 @@ Client ── protected request
                 │
                 ▼
          Protected endpoint
+###################################### password hash implementation ########################################
+For a modern FastAPI application, we'll use pwdlib with Argon2:
+
+pip install "pwdlib[argon2]"
+
+Explanation: pwdlib provides password hashing and verification.
+ Argon2 is a password-hashing algorithm designed specifically for securely storing passwords.
+
+
+ ##############   FLOW           ##################
+
+                  REGISTER
+                    │
+                    ▼
+             username/password
+                    │
+                    ▼
+              Argon2 hashing
+                    │
+                    ▼
+               PostgreSQL
+                    │
+                    │
+                    ▼
+                  LOGIN
+                    │
+                    ▼
+          Find user in PostgreSQL
+                    │
+                    ▼
+          Verify password hash
+                    │
+              ┌─────┴─────┐
+             FAIL         PASS
+              │             │
+             401            ▼
+                         Create JWT
+                            │
+                            ▼
+                         Client
+                            │
+                            ▼
+                  Authorization header
+                            │
+                            ▼
+                  get_current_user()
+                            │
+                            ▼
+                       Verify JWT
+                            │
+                            ▼
+                     Find user in DB
+                            │
+                            ▼
+                     Protected API
