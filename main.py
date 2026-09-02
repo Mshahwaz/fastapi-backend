@@ -12,7 +12,7 @@ security=HTTPBearer()
 
 DATABASE_URL=(
     "postgresql+psycopg://backend-svc-user:"
-    "admin@localhost:5432/backend_svc-db"
+    "admin@localhost:5432/backend_db"
 )
 
 engine=create_engine(DATABASE_URL)
@@ -22,18 +22,23 @@ engine=create_engine(DATABASE_URL)
 class User_create(SQLModel):
     name: str = pyField(min_length=2,max_length=50)
     age: int = pyField(ge=0,le=120)
+    username: str
+    password: str
 
 #DATABASE MODEL for Database ops
 class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
     age: int 
+    username: str
+    password: str
 
 #RESPONSE MODEL for client query response
 class UserResponse(SQLModel):
     id: int
     name: str
     age: int
+    username: str
 
 #To patch the feilds
 class UserUpdate(SQLModel):
@@ -69,7 +74,9 @@ def create_user(user: User_create):
         ###############
         db_user=User(
             name = user.name,
-            age = user.age
+            age = user.age,
+            username = user.username,
+            password = user.password
         ) #creating DB user obj mapped to user table
         session.add(db_user)
         session.commit()
@@ -199,17 +206,34 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
     )
 def login(login_data: LoginRequest):
 
-    if (
-        login_data.username not in fake_users
-        or fake_users[login_data.username]["password"] != login_data.password
-    ):
-        raise HTTPException(
-            status_code=401, # 401 unauthorised
-            detail="Inavlid username and password"
+    # if ( ---Fake DB user authentication
+    #     login_data.username not in fake_users
+    #     or fake_users[login_data.username]["password"] != login_data.password
+    # ):
+    #     raise HTTPException(
+    #         status_code=401, # 401 unauthorised
+    #         detail="Inavlid username and password"
+    #     )
+    ##################### Actual DB query User authentication ######################
+    with Session(engine) as session:
+        statement=select(User).where(
+            User.username == login_data.username
         )
+        db_user= session.exec(statement).first()
+        if db_user is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid Username or password"
+            )
+        if db_user.password != login_data.password:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid Username or password"
+            )
+    #################################################
     expire=datetime.now(timezone.utc)+timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload={
-        "sub":login_data.username,
+        "sub":db_user.username,
         "exp":expire
     }
     token =jwt.encode(
@@ -243,17 +267,30 @@ credentials: HTTPAuthorizationCredentials = Depends(security)
                 status_code=401,
                 detail="Invalid Token"
             )
-        return username
+        # return username
     except JWTError:
         raise HTTPException(
             status_code=401,
             detail="Invalid or Expired token"
         )
+    with Session(engine) as session:
+        statement=select(User).where(
+            User.username == username
+        )
+
+        db_user=session.exec(statement).first()
+
+        if db_user is None:
+            raise HTTPException(
+                status_code=401,
+                detail="User not found"
+            )
+        return db_user
 
 #Protected Endpoint For User authentication
 @app.get("/protected")
 def protected_route(
-    username: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
     ):
     #debug 
     # print("TOKEN:", credentials.credentials)
@@ -277,5 +314,7 @@ def protected_route(
     #     )
     return {
         "message":"You are authenticated",
-        "username":username
+        "username":current_user.username,
+        "user_id":current_user.id,
+        "name": current_user.name
     }

@@ -405,3 +405,76 @@ def profile(username: str = Depends(get_current_user)):
     ...
 
 The authentication logic exists in one place.
+
+#################################
+
+Authentication database backed 
+
+                    PostgreSQL
+                        │
+                        │
+Client ── login ──→ FastAPI ──→ User table
+                        │
+                        ↓
+                       JWT
+                        │
+                        ↓
+Client ── protected request
+                        │
+                        ↓
+                  Verify JWT
+                        │
+                        ↓
+                Find user in DB
+                        │
+                        ↓
+                  Protected API
+###################################################
+                  POST /login
+                       │
+                       ▼
+              username + password
+                       │
+                       ▼
+                 PostgreSQL
+                       │
+                ┌──────┴──────┐
+                │             │
+             User found    Not found
+                │             │
+          Password match      401
+                │
+                ▼
+             Create JWT
+                │
+                ▼
+          Return JWT
+                │
+                ▼
+       Client sends JWT
+                │
+                │ Authorization:
+                │ Bearer <JWT>
+                ▼
+          Protected API
+                │
+                ▼
+       get_current_user()
+                │
+                ▼
+          Verify JWT
+                │
+                ▼
+         Extract `sub`
+                │
+                ▼
+          PostgreSQL
+                │
+                ▼
+         Find User record
+                │
+                ▼
+          current_user
+                │
+                ▼
+         Protected endpoint
