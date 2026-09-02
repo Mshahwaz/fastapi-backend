@@ -324,3 +324,84 @@ Header	Algorithm and token type
 Payload	Claims/data such as username, role, expiration
 Signature	Proves the token was created by your backend and wasn't modified
 
+################################################################################
+JWT verification and extracting the AUTHENtICATED USER IN resuable dependency
+
+Right now, your /protected endpoint verifies the JWT itself. That works, but if you have 20 protected endpoints, 
+you don't want to repeat the same JWT verification code 20 times.
+
+/login
+   ↓
+Create JWT
+   ↓
+Client receives JWT
+   ↓
+Authorization: Bearer <JWT>
+   ↓
+get_current_user()
+   ↓
+Verify JWT
+   ↓
+Extract username
+   ↓
+Endpoint
+
+---username: str = Depends(get_current_user)
+
+means:
+
+Before executing protected_route(), FastAPI must execute get_current_user().
+
+So the execution order is:
+
+GET /protected
+      ↓
+HTTPBearer
+      ↓
+Extract JWT
+      ↓
+get_current_user()
+      ↓
+jwt.decode()
+      ↓
+Verify JWT
+      ↓
+Extract "sub"
+      ↓
+return "shah"
+      ↓
+protected_route(username="shah")
+
+That's the important FastAPI concept here:
+
+Depends() lets you create reusable logic that FastAPI executes before an endpoint.
+
+Without a dependency:
+
+@app.get("/users")
+# verify JWT
+
+@app.get("/orders")
+# verify JWT
+
+@app.get("/payments")
+# verify JWT
+
+@app.get("/profile")
+# verify JWT
+
+You would duplicate authentication code everywhere.
+
+With the dependency:
+
+@app.get("/users")
+def users(username: str = Depends(get_current_user)):
+    ...
+@app.get("/orders")
+def orders(username: str = Depends(get_current_user)):
+    ...
+@app.get("/profile")
+def profile(username: str = Depends(get_current_user)):
+    ...
+
+The authentication logic exists in one place.

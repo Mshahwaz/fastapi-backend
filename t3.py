@@ -1,22 +1,25 @@
 from fastapi import FastAPI, HTTPException , status, Header, Depends
 from sqlmodel import Field, Session, SQLModel, create_engine, select
+# from pydantic import Field -> This is create issue with SQL model field so will use alias
 from pydantic import Field as pyField , BaseModel
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 
+
 app=FastAPI()
 security=HTTPBearer()
+############################## DATABASE SETUP BEGIN ##########################
 
-
+#DATABASE URL -->Docker implementation
 DATABASE_URL=(
     "postgresql+psycopg://backend-svc-user:"
     "admin@localhost:5432/backend_svc-db"
 )
 
+#create sqlalchemy engine engine that knows how our application connects to PostgreSQL.
 engine=create_engine(DATABASE_URL)
-
 
 #Request Model from client side with schema validation
 class User_create(SQLModel):
@@ -40,18 +43,20 @@ class UserUpdate(SQLModel):
     name: str | None =pyField(default=None, min_length=2, max_length=50)
     age: int | None = pyField(default=None, ge=0,le=120)
 
-# LoginRequest Model
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
+#CREATE DB TABLE
 def create_db_and_table():
     SQLModel.metadata.create_all(engine)
 
 create_db_and_table()
 
-########################################
+##################### DATABASE SETUP END ####################################
 
+#TO serve HTML
+@app.get("/")
+def home():
+    return FileResponse("fronend/index.html")
+
+######################### CRUD OPERATIONS #######################################
 #CREATE USER 
 @app.post(
     "/users",
@@ -89,6 +94,27 @@ def get_users():
         ).all()
 
         return users
+
+####################### Query Parameter implementation ##################################
+@app.get(
+    "/users/search",
+    response_model=list[UserResponse]
+    )
+def search_users(name: str | None = None):
+    with Session(engine) as session:
+
+        users=session.exec(
+            select(User)
+            ).all()
+    if name:
+        users=[
+            user for user in users if user.name.lower() == name.lower() # list comnprehension
+        ]
+        return users
+    raise HTTPException(
+        status_code=404,
+        detail="No search Found"
+    )
 
 # GET A Single User with user id
 @app.get(
@@ -180,9 +206,34 @@ def del_user(user_id: int):
         return {
             "message" : f"User with id {user_id} has been removed successfully"
         }
-#######################################
+########################################################################################
 
-fake_users={ #Temp local DB user for testing
+# user-agent headers
+# @app.get("/headers")
+# def read_headers(
+#     user_agent: str | None = Header(default=None)
+#     ):
+#     return {
+#         "user_agent":user_agent
+#     }
+
+# #Custom Header
+# @app.get("/client-info")
+# def client_version(
+#     client_version: str | None = Header(default=True)
+#     ):
+#     return {
+#         "client_version":client_version
+#     }
+###########################################################################################
+
+# TOY Login for practice
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+fake_users={
     "shah":{
         "username":"shah",
         "password": "secret"
@@ -195,7 +246,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 #Login Authentication
 @app.post(
-    "/login",status_code=status.HTTP_200_OK
+    "/login",
     )
 def login(login_data: LoginRequest):
 
@@ -207,6 +258,19 @@ def login(login_data: LoginRequest):
             status_code=401, # 401 unauthorised
             detail="Inavlid username and password"
         )
+        # print(expire)# debug
+
+    # user=fake_users.get(login_data.username)
+    # if not user:
+    #     raise HTTPException(
+    #         status_code=401, # 401 unauthorised
+    #         detail="Inavlid username and password"
+    #     )
+    # if user["password"] != login_data.password:
+    #     raise HTTPException(
+    #         status_code=401,
+    #         detail="Inavlid username and password"
+    #     )
     expire=datetime.now(timezone.utc)+timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload={
         "sub":login_data.username,
@@ -222,11 +286,14 @@ def login(login_data: LoginRequest):
         # "access_token":"abc123", #fake token will used in authorization header for user authorization after login
         "access_token":token, #Generated JWT token
         "token_type":"bearer" 
-    }
+    }       
 
-#Resuable Authenticatin dependency (This fn is responsible for user authentication)
-def get_current_user(
-credentials: HTTPAuthorizationCredentials = Depends(security)
+#Protected Endpoint using authorization
+
+@app.get("/protected")
+def protected_route(
+    # authorization: str | None = Header(default=None)
+    credentials: HTTPAuthorizationCredentials = Depends(security)
     ):
     #debug 
     # print("TOKEN:", credentials.credentials)
@@ -243,37 +310,15 @@ credentials: HTTPAuthorizationCredentials = Depends(security)
                 status_code=401,
                 detail="Invalid Token"
             )
-        return username
     except JWTError:
         raise HTTPException(
             status_code=401,
             detail="Invalid or Expired token"
         )
-
-#Protected Endpoint For User authentication
-@app.get("/protected")
-def protected_route(
-    username: str = Depends(get_current_user)
-    ):
-    #debug 
-    # print("TOKEN:", credentials.credentials)
-    # token=credentials.credentials
-    # try:
-    #     payload=jwt.decode(
-    #         token,
-    #         SECRET_KEY,
-    #         algorithms=[ALGORITHM]
-    #     )
-    #     username=payload.get("sub")
-    # if username is None:
+    # if credentials.credentials != "abc123":
     #     raise HTTPException(
     #         status_code=401,
-    #         detail="Invalid Token"
-    #     )
-    # except JWTError:
-    #     raise HTTPException(
-    #         status_code=401,
-    #         detail="Invalid or Expired token"
+    #         detail="Not Authenticated invalid token"
     #     )
     return {
         "message":"You are authenticated",
