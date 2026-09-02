@@ -533,3 +533,145 @@ Explanation: pwdlib provides password hashing and verification.
                             │
                             ▼
                      Protected API
+
+##########################################################################
+
+uthorization comes after authentication:
+
+"This is Shah"
+      ↓
+"What is Shah allowed to do?"
+      ↓
+Allowed / Not allowed
+
+For example, imagine your application has two types of users:
+
+admin
+user
+
+You might have:
+
+Endpoint	user	admin
+GET /profile	✅	✅
+GET /orders	✅	✅
+POST /orders	✅	✅
+DELETE /users/{id}	❌	✅
+GET /admin/dashboard	❌	✅
+
+So the flow becomes:
+
+                 Request
+                    ↓
+              JWT verification
+                    ↓
+              Who is the user?
+                    ↓
+                 "shah"
+                    ↓
+              What is their role?
+                    ↓
+                  "admin"
+                    ↓
+             Is admin allowed?
+               ↙          ↘
+             YES           NO
+              ↓             ↓
+          Execute API      403
+
+A valid JWT does not automatically mean the user can do everything.
+
+For example:
+
+JWT valid ✅
+User authenticated ✅
+Role = user
+Trying to access /admin
+                    ↓
+Authorization fails ❌
+                    ↓
+403 Forbidden
+
+This is why we distinguish:
+
+401 Unauthorized
+→ Authentication problem
+→ "I don't know/trust who you are."
+
+403 Forbidden
+→ Authorization problem
+→ "I know who you are, but you're not allowed to do this."
+
+We already have a User table.
+
+Let's add:
+
+id
+name
+age
+username
+password_hash
+role
+
+For example:
+
+1 | Shah | 26 | shah | $argon2... | admin
+2 | Ali  | 25 | ali  | $argon2... | user
+
+The role therefore belongs to the user's database record.
+
+For our learning implementation, we'll also put the role into the JWT:
+
+{
+    "sub": "shah",
+    "role": "admin",
+    "exp": "..."
+}
+
+Then the protected API can determine:
+
+JWT
+ ↓
+sub = shah
+role = admin
+ ↓
+Authorization decision
+
+Dependency composition : one dependency can depend on another dependency
+
+Right now an admin endpoint looks like this:
+
+Request
+   ↓
+get_current_user()
+   ↓
+Authenticated user
+   ↓
+Check role == admin
+   ↓
+Endpoint
+
+But if you have many admin endpoints:
+
+DELETE /users/{id}
+GET    /admin/dashboard
+POST   /admin/products
+DELETE /admin/orders/{id}
+
+you don't want to repeat:
+
+if current_user.role != "admin":
+    raise HTTPException(...)
+
+everywhere.
+
+Instead, we'll create another dependency:
+
+get_current_user()
+       ↓
+   current_user
+       ↓
+ require_admin()
+       ↓
+   admin check
+       ↓
+   endpoint
