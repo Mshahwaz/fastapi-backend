@@ -724,3 +724,102 @@ Conceptually:
               Standard response
 
 This becomes particularly useful for unexpected errors.
+
+############################################# MiddleWare ############################################################
+
+Middleware inserts an additional processing layer around that flow:
+
+Client
+   │
+   │ Request
+   ▼
+┌─────────────────┐
+│   Middleware    │
+│   BEFORE        │
+└────────┬────────┘
+         │
+         ▼
+   FastAPI Route
+         │
+         ▼
+   Business Logic
+         │
+         ▼
+┌─────────────────┐
+│   Middleware    │
+│   AFTER         │
+└────────┬────────┘
+         │
+         ▼
+      Response
+         │
+         ▼
+       Client
+
+The important idea is:
+
+Middleware can execute code before the request reaches your endpoint and after your endpoint finishes.
+
+                 CLIENT
+                     │
+                     ▼
+              HTTP REQUEST
+                     │
+                     ▼
+          ┌────────────────────┐
+          │     MIDDLEWARE     │
+          │                    │
+          │  BEFORE processing │
+          └─────────┬──────────┘
+                    │
+                    ▼
+              FastAPI Router
+                    │
+                    ▼
+                Endpoint
+                    │
+             ┌──────┴──────┐
+             │             │
+          Database       API call
+             │             │
+             └──────┬──────┘
+                    │
+                    ▼
+                 Response
+                    │
+                    ▼
+          ┌────────────────────┐
+          │     MIDDLEWARE     │
+          │                    │
+          │  AFTER processing  │
+          └─────────┬──────────┘
+                    │
+                    ▼
+                  CLIENT
+
+And when an operation involves asynchronous I/O:
+
+Endpoint
+   ↓
+await database/API operation
+   ↓
+This task pauses
+   ↓
+Event loop handles other work
+   ↓
+I/O completes
+   ↓
+This task resumes
+The three things to remember
+
+async def
+
+This function can operate asynchronously and use await.
+
+await
+
+Pause this coroutine while an asynchronous operation completes, allowing other async work to progress.
+
+Middleware
+
+Code that wraps HTTP request processing and can run before and after your endpoint.

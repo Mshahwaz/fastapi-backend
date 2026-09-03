@@ -6,6 +6,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from pwdlib import PasswordHash
+import time
 
 #Required Parameters in JWT token creation
 SECRET_KEY="my-super-secret-key"
@@ -224,6 +225,7 @@ def require_admin(
     current_user: User = Depends(get_current_user)
     ):
         ########### Check if a user is a admin or normal user ################ 
+    # time.sleep(10) - for middleware testing
     if current_user.role != "admin":
         raise HTTPException(
             status_code=403,
@@ -334,3 +336,23 @@ async def global_exception_handler(
             "detail":"Internal server error occurred"
         }
     )
+############ Middleware to measure API query total time #########
+
+@app.middleware("http")
+async def request_timer(request: Request,call_next):
+    
+    start_time=time.time()
+    
+    print(request)
+    
+    response = await call_next(request)
+    
+    end_time=time.time()
+    
+    duration=end_time-start_time
+
+    print(
+        f"{request.method} {request.url.path}"
+        f" completed in {duration:4f} seconds"
+    )
+    return response
