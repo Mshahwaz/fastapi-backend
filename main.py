@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from pwdlib import PasswordHash
 import time
+import httpx
 
 #Required Parameters in JWT token creation
 SECRET_KEY="my-super-secret-key"
@@ -249,9 +250,8 @@ def del_user(user_id: int,current_user: User = Depends(require_admin)):
         return {
             "message" : f"User with id {user_id} has been removed successfully"
         }
-#######################################
 
-#Login Authentication
+#Login (Authentication)
 @app.post(
     "/login",status_code=status.HTTP_200_OK
     )
@@ -316,15 +316,7 @@ def admin_dashboard(
         "message" : " Welcome to Admin Dashboard ",
         "user": current_user.name
     }
-########################################### ERROR (GLOBAL EXCEPTION HANDLING) #######################
-
-# @app.get("/test-error")
-# def test_error():
-#     number = 10 / 0
-#     return {
-#         "result": number
-#     }
-
+#Global Exception handler for unexpected errors
 @app.exception_handler(Exception)
 async def global_exception_handler(
     request: Request,
@@ -336,8 +328,8 @@ async def global_exception_handler(
             "detail":"Internal server error occurred"
         }
     )
-############ Middleware to measure API query total time #########
 
+#Middleware to measure API query total time
 @app.middleware("http")
 async def request_timer(request: Request,call_next):
     
@@ -356,3 +348,43 @@ async def request_timer(request: Request,call_next):
         f" completed in {duration:4f} seconds"
     )
     return response
+
+#Calling external Api endpoint ( https://jsonplaceholder.typicode.com/users/{user_id} )
+# #Sync/blocking version
+# @app.get("/external-user/{user_id}")
+# def get_external_user(user_id: int):
+#     response = httpx.get(
+#         f"https://jsonplaceholder.typicode.com/users/{user_id}"
+#     )
+
+#     return response.json
+
+#async (coroutine endpoint)
+@app.get("/external-user/{user_id}")
+async def get_external_user(user_id: int):
+    
+    try:
+        async with httpx.AsyncClient() as client:
+
+            response = await client.get(
+                f"https://jsonplaceholder.tpicode.com/uses",
+                timeout=5.0
+            )
+            response.raise_for_status()
+
+        return response.json()
+    except httpx.HTTPStatusError: # For any Other exception like DNS failure, Connection issue, network failure
+        raise HTTPException(
+            status_code=502, # 502 - bad gatway - 
+            detail="External API returned an error"
+        )
+    except httpx.ConnectError: # For any Other exception like DNS failure, Connection issue, network failure
+        raise HTTPException(
+            status_code=502, # 502 - bad gatway - 
+            detail="External API returned an error"
+        )
+    except httpx.TimeoutException: # For any Other exception like DNS failure, Connection issue, network failure
+        raise HTTPException(
+            status_code=504, # 504 Gateway timeout  - 
+            detail="External API returned an error"
+        )

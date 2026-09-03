@@ -823,3 +823,144 @@ Pause this coroutine while an asynchronous operation completes, allowing other a
 Middleware
 
 Code that wraps HTTP request processing and can run before and after your endpoint.
+
+###################################### Calling External Api's #########################
+
+We can use requests and httpx ( python client libs to sent http request) 
+
+requests : sync
+
+httpx : async and sync both
+
+------------------------
+
+Swagger / Frontend
+        │
+        │  GET /external-user/1
+        ▼
+┌───────────────────┐
+│   Your FastAPI    │
+│                   │
+│  /external-user   │
+└─────────┬─────────┘
+          │
+          │ GET /users/1
+          ▼
+┌───────────────────┐
+│   External API    │
+│                   │
+│ JSONPlaceholder   │
+└─────────┬─────────┘
+          │
+          │ JSON response
+          ▼
+     Your FastAPI
+          │
+          │ JSON response
+          ▼
+      Swagger
+
+Handling External API Errors : -------------------
+
+uppose your code does:
+
+response = await client.get(
+    "https://some-api.com/users/10"
+)
+
+Several things can happen.
+
+Case 1 — Success
+External API
+     │
+     │ 200 OK
+     ▼
+JSON
+
+Good.
+
+Case 2 — Resource doesn't exist
+External API
+     │
+     │ 404 Not Found
+     ▼
+Case 3 — External server has a problem
+External API
+     │
+     │ 500 Internal Server Error
+     ▼
+Case 4 — External API is too slow
+Your Backend
+     │
+     │ request
+     ▼
+External API
+     │
+     │ ............... no response
+     ▼
+       TIMEOUT
+Case 5 — External server is completely unreachable
+Your Backend
+     │
+     │ request
+     X
+External API
+
+irst: HTTP errors vs connection errors
+
+This distinction is important.
+
+Imagine:
+
+response = await client.get(url)
+Situation A — Server responded with 404
+
+The external server did respond.
+
+Your backend
+     │
+     │ GET
+     ▼
+External API
+     │
+     │ 404
+     ▼
+Your backend
+
+You have an HTTP response.
+
+You can inspect:
+
+response.status_code
+
+which would be:
+
+404
+Situation B — Server never responded
+
+For example:
+
+DNS failure
+connection refused
+network failure
+timeout
+
+There may be no HTTP response at all.
+
+That's fundamentally different.
+
+Your backend
+     │
+     │ GET
+     ▼
+External API
+     X
+   failure
+
+In this case, httpx can raise an exception.
+
+502 Bad Gateway is commonly used when a server acting as a gateway/proxy receives 
+an invalid/error response from an upstream service.
+
+504 Gateway Timeout is appropriate when your backend is 
+waiting on an upstream service and that upstream doesn't respond in time.
