@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException , status, Header, Depends, Request
+from fastapi import FastAPI, HTTPException , status, Header, Depends, Request, BackgroundTasks
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from pydantic import Field as pyField , BaseModel
 from fastapi.responses import FileResponse, JSONResponse
@@ -68,13 +68,20 @@ create_db_and_table()
 
 ########################################
 
+##### For BG TASK ####
+def send_email():
+    print("Sending Email...")
+    time.sleep(5)
+    print("Email Sent.!")
+######################
+
 #CREATE USER 
 @app.post(
     "/register",
     status_code=status.HTTP_201_CREATED,
     response_model=UserResponse
     )
-def register_user(user: User_create):
+def register_user(user: User_create,background_task: BackgroundTasks):
     #Business Rule 
     if user.age < 18:
         raise HTTPException(
@@ -94,6 +101,10 @@ def register_user(user: User_create):
         session.add(db_user)
         session.commit()
         session.refresh(db_user)
+
+        ##Background Task
+        background_task.add_task(send_email) #Will execute after sendind request response back 
+
         return db_user
 
 
@@ -417,3 +428,4 @@ async def send_to_external_api(user_data: External_api_users):
     response_payload=response.json()
     response_payload.setdefault("status","Query Successfull")
     return response_payload
+

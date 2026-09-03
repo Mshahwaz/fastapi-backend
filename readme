@@ -987,3 +987,154 @@ response = await client.post(
     json=data,
     headers=headers
 )
+
+################################### BACKGROUND TASK ############################################
+magine your API receives:
+
+POST /register
+
+The user registers successfully.
+
+But after registration, your backend needs to:
+
+1. Save user to database
+2. Send welcome email
+3. Generate some report
+4. Notify another service
+
+Suppose sending the email takes 3 seconds.
+
+Without a background task:
+
+Client
+  │
+  │ POST /register
+  ▼
+FastAPI
+  │
+  ├── Save user       100 ms
+  │
+  ├── Send email      3 sec
+  │
+  └── Response        ← user waits ~3.1 sec
+
+The user has to wait for work that isn't necessary to produce the immediate API response.
+
+With a background task:
+
+Client
+  │
+  │ POST /register
+  ▼
+FastAPI
+  │
+  ├── Save user
+  │
+  ├── Schedule email
+  │
+  └── Response ─────────► Client
+             │
+             ▼
+        Background work
+             │
+             └── Send email
+
+The user gets the response first.
+
+A background task means:
+
+Do this work after the API response has been sent, rather than making the client wait for it.
+
+For example:
+
+Immediate work
+    ↓
+Return API response
+    ↓
+Background work
+
+Typical examples:
+
+Send an email
+Send a notification
+Write a non-critical audit record
+Process a small file
+Trigger some secondary operation
+
+But there's an important limitation:
+
+FastAPI BackgroundTasks is not a replacement for a proper job queue.
+
+
+Background task vs async
+
+This is important because we just learned async.
+
+They solve different problems.
+
+Async/await
+
+Primarily helps with:
+
+I/O concurrency
+
+Example:
+
+response = await client.get(...)
+
+You're waiting for an external API.
+
+Background task
+
+Helps with:
+
+Work that doesn't need to delay the API response
+
+Example:
+
+background_tasks.add_task(send_email)
+
+So:
+
+async/await
+    ↓
+How work waits/cooperates with the event loop
+
+
+BackgroundTasks
+    ↓
+When the work should happen relative to the response
+
+They can also be combined.
+
+For example, a background task could perform some asynchronous I/O.
+
+
+Suppose you have:
+
+Generate 50 GB report
+Process 10 million records
+Video encoding
+Long-running ML job
+Critical payment processing
+
+You generally shouldn't rely on FastAPI's simple BackgroundTasks for those.
+
+For serious asynchronous job processing, you may eventually use things such as:
+
+FastAPI
+   │
+   ▼
+Message Queue
+   │
+   ├── Redis
+   ├── RabbitMQ
+   └── Kafka
+        │
+        ▼
+Worker
+        │
+        ▼
+Long-running job
+
+We'll get to that when we study backend architecture, rather than introducing it prematurely.
