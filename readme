@@ -964,3 +964,26 @@ an invalid/error response from an upstream service.
 
 504 Gateway Timeout is appropriate when your backend is 
 waiting on an upstream service and that upstream doesn't respond in time.
+
+############ for post request :
+
+What about headers?
+
+External APIs frequently require headers.
+
+For example, an API might require:
+
+Authorization: Bearer abc123
+Content-Type: application/json
+
+With httpx:
+
+headers = {
+    "Authorization": "Bearer abc123"
+}
+
+response = await client.post(
+    "https://example.com/payments",
+    json=data,
+    headers=headers
+)

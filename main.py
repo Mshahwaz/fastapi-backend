@@ -335,7 +335,7 @@ async def request_timer(request: Request,call_next):
     
     start_time=time.time()
     
-    print(request)
+    # print(request)
     
     response = await call_next(request)
     
@@ -344,7 +344,7 @@ async def request_timer(request: Request,call_next):
     duration=end_time-start_time
 
     print(
-        f"{request.method} {request.url.path}"
+        f"INFO: {request.method} {request.url.path}"
         f" completed in {duration:4f} seconds"
     )
     return response
@@ -359,7 +359,7 @@ async def request_timer(request: Request,call_next):
 
 #     return response.json
 
-#async (coroutine endpoint)
+#Get request to external api
 @app.get("/external-user/{user_id}")
 async def get_external_user(user_id: int):
     
@@ -388,3 +388,32 @@ async def get_external_user(user_id: int):
             status_code=504, # 504 Gateway timeout  - 
             detail="External API returned an error"
         )
+#Testing 
+class External_api_users(BaseModel):
+    id: int
+    body: str
+    title: str
+
+#POST Request to External api
+@app.post("/external-post")
+async def send_to_external_api(user_data: External_api_users):
+    payload ={
+        "id":101,
+        "userId":user_data.id,
+        "title":user_data.title,
+        "body":user_data.body
+    }
+    url="https://jsonplaceholder.typicode.com/posts"
+    header={
+        "content-Type": "application/json"
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            url,
+            headers=header,
+            json=payload
+        )
+    # print(response.json()) Debig
+    response_payload=response.json()
+    response_payload.setdefault("status","Query Successfull")
+    return response_payload
