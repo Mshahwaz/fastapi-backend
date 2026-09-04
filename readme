@@ -275,3 +275,83 @@ load_dotenv()
 
 then 
 use : os.getenv("")
+
+############################### Configuration management ###########################
+
+Configuration: don't scatter os.getenv() everywhere
+
+Imagine your application has 20 configuration values.
+
+You could technically do this throughout your code:
+
+os.getenv("DATABASE_URL")
+os.getenv("SECRET_KEY")
+os.getenv("ALGORITHM")
+os.getenv("REDIS_URL")
+os.getenv("API_URL")
+
+That becomes messy.
+
+Instead, we want one place responsible for application configuration.
+
+Think:
+
+                    Configuration
+                         │
+        ┌────────────────┼────────────────┐
+        ▼                ▼                ▼
+   DATABASE_URL      SECRET_KEY       API_URL
+        │                │                │
+        └────────────────┼────────────────┘
+                         ▼
+                    FastAPI app
+
+This is the beginning of a configuration layer.
+
+1. Create config.py
+
+For now, don't create a huge project structure.
+
+Just create:
+
+backend/
+│
+├── main.py
+├── config.py
+└── .env
+
+Inside config.py:
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+
+ACCESS_TOKEN_EXPIRE_MINUTES = int(
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
+)
+
+Now configuration has its own home.
+
+2. Use it from main.py
+
+Instead of:
+
+import os
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+you can do:
+
+from config import (
+    DATABASE_URL,
+    SECRET_KEY,
+    ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_MINUTES
+)

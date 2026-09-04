@@ -9,12 +9,17 @@ from pwdlib import PasswordHash
 import time
 import httpx
 import logging
-from dotenv import load_dotenv
-import os
-
+from config import (
+    SECRET_KEY,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    ALGORITHM,
+    DATABASE_URL
+)
+# from dotenv import load_dotenv
+# import os --not required as config handels 
 
 #envvarsloader
-load_dotenv()
+# load_dotenv() -not required as config handels 
 
 #Logbasicconfig
 logging.basicConfig(
@@ -26,12 +31,12 @@ logger=logging.getLogger(__name__)
 
 
 
-#Required Parameters in JWT token creation
-SECRET_KEY=os.getenv("SECRET_KEY")
-ALGORITHM=os.getenv("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES=int(
-    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES","30") # 30:default if not found 
-)
+#Required Parameters in JWT token creation --(Update) will be imported directly from config 
+# SECRET_KEY=os.getenv("SECRET_KEY")
+# ALGORITHM=os.getenv("ALGORITHM")
+# ACCESS_TOKEN_EXPIRE_MINUTES=int(
+#     os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES","30") # 30:default if not found 
+# )
 
 password_hash = PasswordHash.recommended()
 # use it as : hashed_password = password_hash.hash("password")
@@ -39,12 +44,12 @@ app=FastAPI()
 security=HTTPBearer()
 
 
-DATABASE_URL=os.getenv("DATABASE_URL")
+# DATABASE_URL=os.getenv("DATABASE_URL") --(Update) will be imported directly from config 
 
 engine=create_engine(DATABASE_URL)
 
 
-#Request Model from client side with schema validation
+#Request Model for client side schema validation
 class User_create(SQLModel):
     name: str = pyField(min_length=2,max_length=50)
     age: int = pyField(ge=0,le=120)
