@@ -1,1140 +1,183 @@
-############ HTTP STATUS CODEs #####################
+################ Logging #################################
 
+Why do we need logging?
 
-# POST - Success 201 Created
-# GET - Success HTTP request 200 OK 
+or a real backend, we want things like:
 
-200 OK
-201 Created
-204 No Content  
+2026-09-03 23:30:15 INFO     GET /users 200
+2026-09-03 23:30:16 INFO     POST /login 200
+2026-09-03 23:30:20 WARNING  External API slow
+2026-09-03 23:30:25 ERROR    Database connection failed
 
-400 Bad Request
-401 Unauthorized
-403 Forbidden
-404 Not Found
-409 Conflict
-422 Unprocessable Content - Validation Error
+This is what logging gives us.
 
-500 Internal Server Error
-502 Bad Gateway
-503 Service Unavailable
-504 Gateway Timeout
+magine your FastAPI application is running on a server.
 
+A user reports:
 
-######################### REQUEST MODEL VS DATABASE MODEL VS RESPONSE MODEL ###########################################
+"The API failed at 11:30 PM."
 
-             CLIENT
-                │
-                │ JSON
-                ↓
-        ┌─────────────────┐
-        │ Request Model   │
-        │                 │
-        │ name            │
-        │ age             │
-        └────────┬────────┘
-                 │
-                 ↓
-          BACKEND LOGIC
-                 │
-                 ↓
-        ┌─────────────────┐
-        │ Database Model  │
-        │                 │
-        │ id              │
-        │ name            │
-        │ age             │
-        │ internal fields │
-        └────────┬────────┘
-                 │
-                 ↓
-             PostgreSQL
-                 │
-                 ↓
-        ┌─────────────────┐
-        │ Response Model  │
-        │                 │
-        │ id              │
-        │ name            │
-        │ age             │
-        └────────┬────────┘
-                 │
-                 ↓
-              CLIENT
+If your code only has:
 
-########################## Validation on client input data acc to Schema validation/business logic #####################################
+print("something happened")
 
-Request
+you may have very little useful information.
+
+With proper logging, you can record:
+
+TIME
    ↓
-Schema validation
+2026-09-03 23:30:12
+
+LEVEL
    ↓
-Business validation
+ERROR
+
+WHAT
    ↓
-Backend logic
+POST /login
+
+WHY
    ↓
-Database
+Database connection failed
 
-Example: Our application only allows users who are at least 18 years old. (Business Logic)
+So logging gives you an application history that helps with:
 
-age: int = PydanticField(
-    ge=18,
-    le=120
-)
-"Age must be an integer between 0 and 120" -- is a data/schema constraint.
-"Only adults can register" - app/business rule/logic
+debugging
+troubleshooting
+incident investigation
+monitoring
+production support
+performance analysis
 
+This is particularly relevant to your DevOps/SRE work.
 
-Schema validation ------ handeled by pydantic/fastapi
+Log levels
 
-Is the request structurally valid? 
+Python's logging system provides different severity levels.
 
-example : 
+The main ones you'll use are:
 
-age is an integer        ✅
-age is -5                ❌
-name is too long         ❌
-name is missing          ❌
+DEBUG
+INFO
+WARNING
+ERROR
+CRITICAL
 
+Think of them as:
 
-Business logic ------- handled by app/backend code
+DEBUG
+  │
+  │ detailed diagnostic information
+  ▼
+INFO
+  │
+  │ normal application events
+  ▼
+WARNING
+  │
+  │ something unusual
+  ▼
+ERROR
+  │
+  │ operation failed
+  ▼
+CRITICAL
+     serious application/system failure
+Example
+INFO
+User successfully logged in
 
-Does this request comply with our application's rules?
+WARNING
+External API response took 4 seconds
 
-examples :
+ERROR
+Database query failed
 
-User must be 18+
-Email must be unique
-Order cannot exceed stock
-User cannot cancel shipped order
-Discount cannot exceed 30%
+CRITICAL
+Application cannot connect to database
 
-################################################## PUT VS PATCH ###########################################
+Why __name__?
 
-PUT - replace the resource representation
-PATCH - Modify only specific feilds
+This:
 
-############################################## HTTP Headers ###############################################
+logger = logging.getLogger(__name__)
 
-Headers are metadata about an HTTP request or response. HTTP HAS 4 pieces
+is very common Python code.
 
-HTTP REQUEST
+Suppose the file is:
+
+users.py
+
+then __name__ identifies the module.
+
+So logs can tell you where they came from.
+
+Later, when we split your giant main.py:
+
+app/
+├── routes/
+│   ├── users.py
+│   └── auth.py
 │
-├── Method
-│     POST
+├── services/
+│   ├── user_service.py
+│   └── auth_service.py
 │
-├── URL
-│     /users
-│
-├── Headers
-│     Content-Type: application/json
-│     Authorization: Bearer ...
-│
-└── Body
-      {
-          "name": "Rahul",
-          "age": 25
-      }
+└── database/
+    └── connection.py
 
-This is the most important header for our current application.
+each module can have:
 
------------>When we send:
+logger = logging.getLogger(__name__)
 
-Content-Type: application/json
+Then you can identify which part of your backend generated a log.
 
-we're telling FastAPI:
+That's one reason this becomes important when we introduce project structure.
 
-"The request body is JSON."
+Logging exceptions
 
-So:
+This is particularly useful.
 
-Browser
-   │
-   │ Content-Type: application/json
-   │
-   │ {
-   │   "name": "Rahul",
-   │   "age": 25
-   │ }
-   ↓
-FastAPI
-
-FastAPI knows to parse the body as JSON.
-
-####################### Authorization ##################################
-
-This one:
-
-Authorization: Bearer <token>
-
-You've probably seen it in APIs.
-
-For example:
-
-GET /users/10
-Authorization: Bearer eyJhbGciOi...
-
-Conceptually:
-
-Client
-   │
-   │ Authorization: Bearer TOKEN
-   ↓
-Backend
-   │
-   │ verify token
-   ↓
-Allowed?
-   │
-   ├── No → 401
-   │
-   └── Yes
-        ↓
-      Process request
-
-Status codes fit into this
-
-Suppose the API requires authentication.
-
-No credentials:
-
-GET /users
-
-could produce:
-
-401 Unauthorized
-
-Valid credentials but insufficient permissions:
-
-DELETE /users/5
-
-could produce:
-
-403 Forbidden
-
-So:
-
-401
-↓
-"I don't have valid authentication."
-
-403
-↓
-"I know who you are, but you're not allowed to do this."
-
-This distinction is important.
-
-############################## Login + Authentication ######################################
-flow : 
-
-             CLIENT
-                │
-                │ username + password
-                ↓
-             POST /login
-                │
-                ↓
-             FASTAPI
-                │
-                │ verify credentials
-                ↓
-             TOKEN
-                │
-                ↓
-             CLIENT
-                │
-                │ Authorization: Bearer TOKEN
-                ↓
-          Protected API
-
-Our token is:
-
-abc123
-
-Every user gets the same token.
-
-So:
-
-Shah → abc123
-Amit → abc123
-Priya → abc123
-
-That's obviously useless.
-
-Also, the backend doesn't know:
-
-Who owns this token?
-When was it issued?
-When does it expire?
-What permissions does it represent?
-
-A real authentication system needs answers to those questions.
-
-That's where JWT comes in.
-
-13. JWT will solve a different problem
-
-A JWT can carry claims such as:
-
-{
-    "sub": "123",
-    "role": "admin",
-    "exp": 1780000000
-}
-
-and is cryptographically signed.
-
-The flow becomes:
-
-Login
-  ↓
-Verify username/password
-  ↓
-Create signed JWT
-  ↓
-Client
-  ↓
-Authorization: Bearer <JWT>
-  ↓
-Backend
-  ↓
-Verify JWT signature + claims
-  ↓
-Identify user
-  ↓
-Authorization/business logic
-
-JWT - JAVA WEB TOKEN
-
-. What JWT actually looks like
-
-A JWT has three parts:
-
-HEADER.PAYLOAD.SIGNATURE
-
-Example:
-
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
-eyJzdWIiOiJzaGFoIiwiZXhwIjoxNzU2ODAwMDAwfQ.
-abc123xyz...
-
-The three sections are:
-
-Part	Purpose
-Header	Algorithm and token type
-Payload	Claims/data such as username, role, expiration
-Signature	Proves the token was created by your backend and wasn't modified
-
-################################################################################
-JWT verification and extracting the AUTHENtICATED USER IN resuable dependency
-
-Right now, your /protected endpoint verifies the JWT itself. That works, but if you have 20 protected endpoints, 
-you don't want to repeat the same JWT verification code 20 times.
-
-/login
-   ↓
-Create JWT
-   ↓
-Client receives JWT
-   ↓
-Authorization: Bearer <JWT>
-   ↓
-get_current_user()
-   ↓
-Verify JWT
-   ↓
-Extract username
-   ↓
-Endpoint
-
----username: str = Depends(get_current_user)
-
-means:
-
-Before executing protected_route(), FastAPI must execute get_current_user().
-
-So the execution order is:
-
-GET /protected
-      ↓
-HTTPBearer
-      ↓
-Extract JWT
-      ↓
-get_current_user()
-      ↓
-jwt.decode()
-      ↓
-Verify JWT
-      ↓
-Extract "sub"
-      ↓
-return "shah"
-      ↓
-protected_route(username="shah")
-
-That's the important FastAPI concept here:
-
-Depends() lets you create reusable logic that FastAPI executes before an endpoint.
-
-Without a dependency:
-
-@app.get("/users")
-# verify JWT
-
-@app.get("/orders")
-# verify JWT
-
-@app.get("/payments")
-# verify JWT
-
-@app.get("/profile")
-# verify JWT
-
-You would duplicate authentication code everywhere.
-
-With the dependency:
-
-@app.get("/users")
-def users(username: str = Depends(get_current_user)):
-    ...
-@app.get("/orders")
-def orders(username: str = Depends(get_current_user)):
-    ...
-@app.get("/profile")
-def profile(username: str = Depends(get_current_user)):
-    ...
-
-The authentication logic exists in one place.
-
-#################################
-
-Authentication database backed 
-
-                    PostgreSQL
-                        │
-                        │
-Client ── login ──→ FastAPI ──→ User table
-                        │
-                        ↓
-                       JWT
-                        │
-                        ↓
-Client ── protected request
-                        │
-                        ↓
-                  Verify JWT
-                        │
-                        ↓
-                Find user in DB
-                        │
-                        ↓
-                  Protected API
-###################################################
-                  POST /login
-                       │
-                       ▼
-              username + password
-                       │
-                       ▼
-                 PostgreSQL
-                       │
-                ┌──────┴──────┐
-                │             │
-             User found    Not found
-                │             │
-          Password match      401
-                │
-                ▼
-             Create JWT
-                │
-                ▼
-          Return JWT
-                │
-                ▼
-       Client sends JWT
-                │
-                │ Authorization:
-                │ Bearer <JWT>
-                ▼
-          Protected API
-                │
-                ▼
-       get_current_user()
-                │
-                ▼
-          Verify JWT
-                │
-                ▼
-         Extract `sub`
-                │
-                ▼
-          PostgreSQL
-                │
-                ▼
-         Find User record
-                │
-                ▼
-          current_user
-                │
-                ▼
-         Protected endpoint
-###################################### password hash implementation ########################################
-For a modern FastAPI application, we'll use pwdlib with Argon2:
-
-pip install "pwdlib[argon2]"
-
-Explanation: pwdlib provides password hashing and verification.
- Argon2 is a password-hashing algorithm designed specifically for securely storing passwords.
-
-
- ##############   FLOW           ##################
-
-                  REGISTER
-                    │
-                    ▼
-             username/password
-                    │
-                    ▼
-              Argon2 hashing
-                    │
-                    ▼
-               PostgreSQL
-                    │
-                    │
-                    ▼
-                  LOGIN
-                    │
-                    ▼
-          Find user in PostgreSQL
-                    │
-                    ▼
-          Verify password hash
-                    │
-              ┌─────┴─────┐
-             FAIL         PASS
-              │             │
-             401            ▼
-                         Create JWT
-                            │
-                            ▼
-                         Client
-                            │
-                            ▼
-                  Authorization header
-                            │
-                            ▼
-                  get_current_user()
-                            │
-                            ▼
-                       Verify JWT
-                            │
-                            ▼
-                     Find user in DB
-                            │
-                            ▼
-                     Protected API
-
-##########################################################################
-
-uthorization comes after authentication:
-
-"This is Shah"
-      ↓
-"What is Shah allowed to do?"
-      ↓
-Allowed / Not allowed
-
-For example, imagine your application has two types of users:
-
-admin
-user
-
-You might have:
-
-Endpoint	user	admin
-GET /profile	✅	✅
-GET /orders	✅	✅
-POST /orders	✅	✅
-DELETE /users/{id}	❌	✅
-GET /admin/dashboard	❌	✅
-
-So the flow becomes:
-
-                 Request
-                    ↓
-              JWT verification
-                    ↓
-              Who is the user?
-                    ↓
-                 "shah"
-                    ↓
-              What is their role?
-                    ↓
-                  "admin"
-                    ↓
-             Is admin allowed?
-               ↙          ↘
-             YES           NO
-              ↓             ↓
-          Execute API      403
-
-A valid JWT does not automatically mean the user can do everything.
-
-For example:
-
-JWT valid ✅
-User authenticated ✅
-Role = user
-Trying to access /admin
-                    ↓
-Authorization fails ❌
-                    ↓
-403 Forbidden
-
-This is why we distinguish:
-
-401 Unauthorized
-→ Authentication problem
-→ "I don't know/trust who you are."
-
-403 Forbidden
-→ Authorization problem
-→ "I know who you are, but you're not allowed to do this."
-
-We already have a User table.
-
-Let's add:
-
-id
-name
-age
-username
-password_hash
-role
-
-For example:
-
-1 | Shah | 26 | shah | $argon2... | admin
-2 | Ali  | 25 | ali  | $argon2... | user
-
-The role therefore belongs to the user's database record.
-
-For our learning implementation, we'll also put the role into the JWT:
-
-{
-    "sub": "shah",
-    "role": "admin",
-    "exp": "..."
-}
-
-Then the protected API can determine:
-
-JWT
- ↓
-sub = shah
-role = admin
- ↓
-Authorization decision
-
-Dependency composition : one dependency can depend on another dependency
-
-Right now an admin endpoint looks like this:
-
-Request
-   ↓
-get_current_user()
-   ↓
-Authenticated user
-   ↓
-Check role == admin
-   ↓
-Endpoint
-
-But if you have many admin endpoints:
-
-DELETE /users/{id}
-GET    /admin/dashboard
-POST   /admin/products
-DELETE /admin/orders/{id}
-
-you don't want to repeat:
-
-if current_user.role != "admin":
-    raise HTTPException(...)
-
-everywhere.
-
-Instead, we'll create another dependency:
-
-get_current_user()
-       ↓
-   current_user
-       ↓
- require_admin()
-       ↓
-   admin check
-       ↓
-   endpoint
-
-
-################################# ERRORS ##################################################################
-
-Backend ERRORS : Expected erros (4XX , 5XX)
-
-Intentioal Erros: Unexpected erros  (CAUSES Internal server error)
-
-Expected API problem
-        ↓
-HTTPException
-        ↓
-Controlled HTTP response
-
-Unexpected programming/system problem (ex. ZeroDivisionError)
-        ↓
-Python Exception
-        ↓
-500 Internal Server Error
-
-global exception handling?
-
-Imagine you have 50 endpoints.
-
-You don't want every endpoint to contain:
+Suppose:
 
 try:
-    ...
-except SomeException:
-    ...
 
-Instead, FastAPI allows you to define a handler that says:
+    # some operation
 
-"Whenever this particular exception occurs anywhere in my application, handle it this way."
+except Exception:
+    logger.exception("Unexpected error while processing request")
 
-Conceptually:
-
-                 Any endpoint
-                     │
-                     ▼
-              Exception occurs
-                     │
-                     ▼
-          Global exception handler
-                     │
-                     ▼
-              Standard response
-
-This becomes particularly useful for unexpected errors.
-
-############################################# MiddleWare ############################################################
-
-Middleware inserts an additional processing layer around that flow:
-
-Client
-   │
-   │ Request
-   ▼
-┌─────────────────┐
-│   Middleware    │
-│   BEFORE        │
-└────────┬────────┘
-         │
-         ▼
-   FastAPI Route
-         │
-         ▼
-   Business Logic
-         │
-         ▼
-┌─────────────────┐
-│   Middleware    │
-│   AFTER         │
-└────────┬────────┘
-         │
-         ▼
-      Response
-         │
-         ▼
-       Client
-
-The important idea is:
-
-Middleware can execute code before the request reaches your endpoint and after your endpoint finishes.
-
-                 CLIENT
-                     │
-                     ▼
-              HTTP REQUEST
-                     │
-                     ▼
-          ┌────────────────────┐
-          │     MIDDLEWARE     │
-          │                    │
-          │  BEFORE processing │
-          └─────────┬──────────┘
-                    │
-                    ▼
-              FastAPI Router
-                    │
-                    ▼
-                Endpoint
-                    │
-             ┌──────┴──────┐
-             │             │
-          Database       API call
-             │             │
-             └──────┬──────┘
-                    │
-                    ▼
-                 Response
-                    │
-                    ▼
-          ┌────────────────────┐
-          │     MIDDLEWARE     │
-          │                    │
-          │  AFTER processing  │
-          └─────────┬──────────┘
-                    │
-                    ▼
-                  CLIENT
-
-And when an operation involves asynchronous I/O:
-
-Endpoint
-   ↓
-await database/API operation
-   ↓
-This task pauses
-   ↓
-Event loop handles other work
-   ↓
-I/O completes
-   ↓
-This task resumes
-The three things to remember
-
-async def
-
-This function can operate asynchronously and use await.
-
-await
-
-Pause this coroutine while an asynchronous operation completes, allowing other async work to progress.
-
-Middleware
-
-Code that wraps HTTP request processing and can run before and after your endpoint.
-
-###################################### Calling External Api's #########################
-
-We can use requests and httpx ( python client libs to sent http request) 
-
-requests : sync
-
-httpx : async and sync both
-
-------------------------
-
-Swagger / Frontend
-        │
-        │  GET /external-user/1
-        ▼
-┌───────────────────┐
-│   Your FastAPI    │
-│                   │
-│  /external-user   │
-└─────────┬─────────┘
-          │
-          │ GET /users/1
-          ▼
-┌───────────────────┐
-│   External API    │
-│                   │
-│ JSONPlaceholder   │
-└─────────┬─────────┘
-          │
-          │ JSON response
-          ▼
-     Your FastAPI
-          │
-          │ JSON response
-          ▼
-      Swagger
-
-Handling External API Errors : -------------------
-
-uppose your code does:
-
-response = await client.get(
-    "https://some-api.com/users/10"
-)
-
-Several things can happen.
-
-Case 1 — Success
-External API
-     │
-     │ 200 OK
-     ▼
-JSON
-
-Good.
-
-Case 2 — Resource doesn't exist
-External API
-     │
-     │ 404 Not Found
-     ▼
-Case 3 — External server has a problem
-External API
-     │
-     │ 500 Internal Server Error
-     ▼
-Case 4 — External API is too slow
-Your Backend
-     │
-     │ request
-     ▼
-External API
-     │
-     │ ............... no response
-     ▼
-       TIMEOUT
-Case 5 — External server is completely unreachable
-Your Backend
-     │
-     │ request
-     X
-External API
-
-irst: HTTP errors vs connection errors
-
-This distinction is important.
-
-Imagine:
-
-response = await client.get(url)
-Situation A — Server responded with 404
-
-The external server did respond.
-
-Your backend
-     │
-     │ GET
-     ▼
-External API
-     │
-     │ 404
-     ▼
-Your backend
-
-You have an HTTP response.
-
-You can inspect:
-
-response.status_code
-
-which would be:
-
-404
-Situation B — Server never responded
+logger.exception() is useful inside an except block because it records the exception information and traceback.
 
 For example:
 
-DNS failure
-connection refused
-network failure
-timeout
+try:
+    result = some_operation()
 
-There may be no HTTP response at all.
+except Exception:
+    logger.exception("Failed to process operation")
+    raise
 
-That's fundamentally different.
+Notice:
 
-Your backend
-     │
-     │ GET
-     ▼
-External API
-     X
-   failure
+raise
 
-In this case, httpx can raise an exception.
+We log the exception and then re-raise it.
 
-502 Bad Gateway is commonly used when a server acting as a gateway/proxy receives 
-an invalid/error response from an upstream service.
+We don't silently swallow the error.
 
-504 Gateway Timeout is appropriate when your backend is 
-waiting on an upstream service and that upstream doesn't respond in time.
+That's important.
 
-############ for post request :
+Bad:
 
-What about headers?
+except Exception:
+    logger.exception("Something failed")
 
-External APIs frequently require headers.
+The exception disappears from the normal flow.
 
-For example, an API might require:
+Better:
 
-Authorization: Bearer abc123
-Content-Type: application/json
-
-With httpx:
-
-headers = {
-    "Authorization": "Bearer abc123"
-}
-
-response = await client.post(
-    "https://example.com/payments",
-    json=data,
-    headers=headers
-)
-
-################################### BACKGROUND TASK ############################################
-magine your API receives:
-
-POST /register
-
-The user registers successfully.
-
-But after registration, your backend needs to:
-
-1. Save user to database
-2. Send welcome email
-3. Generate some report
-4. Notify another service
-
-Suppose sending the email takes 3 seconds.
-
-Without a background task:
-
-Client
-  │
-  │ POST /register
-  ▼
-FastAPI
-  │
-  ├── Save user       100 ms
-  │
-  ├── Send email      3 sec
-  │
-  └── Response        ← user waits ~3.1 sec
-
-The user has to wait for work that isn't necessary to produce the immediate API response.
-
-With a background task:
-
-Client
-  │
-  │ POST /register
-  ▼
-FastAPI
-  │
-  ├── Save user
-  │
-  ├── Schedule email
-  │
-  └── Response ─────────► Client
-             │
-             ▼
-        Background work
-             │
-             └── Send email
-
-The user gets the response first.
-
-A background task means:
-
-Do this work after the API response has been sent, rather than making the client wait for it.
-
-For example:
-
-Immediate work
-    ↓
-Return API response
-    ↓
-Background work
-
-Typical examples:
-
-Send an email
-Send a notification
-Write a non-critical audit record
-Process a small file
-Trigger some secondary operation
-
-But there's an important limitation:
-
-FastAPI BackgroundTasks is not a replacement for a proper job queue.
-
-
-Background task vs async
-
-This is important because we just learned async.
-
-They solve different problems.
-
-Async/await
-
-Primarily helps with:
-
-I/O concurrency
-
-Example:
-
-response = await client.get(...)
-
-You're waiting for an external API.
-
-Background task
-
-Helps with:
-
-Work that doesn't need to delay the API response
-
-Example:
-
-background_tasks.add_task(send_email)
-
-So:
-
-async/await
-    ↓
-How work waits/cooperates with the event loop
-
-
-BackgroundTasks
-    ↓
-When the work should happen relative to the response
-
-They can also be combined.
-
-For example, a background task could perform some asynchronous I/O.
-
-
-Suppose you have:
-
-Generate 50 GB report
-Process 10 million records
-Video encoding
-Long-running ML job
-Critical payment processing
-
-You generally shouldn't rely on FastAPI's simple BackgroundTasks for those.
-
-For serious asynchronous job processing, you may eventually use things such as:
-
-FastAPI
-   │
-   ▼
-Message Queue
-   │
-   ├── Redis
-   ├── RabbitMQ
-   └── Kafka
-        │
-        ▼
-Worker
-        │
-        ▼
-Long-running job
-
-We'll get to that when we study backend architecture, rather than introducing it prematurely.
+except Exception:
+    logger.exception("Something failed")
+    raise

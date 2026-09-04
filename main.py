@@ -8,6 +8,17 @@ from jose import jwt, JWTError
 from pwdlib import PasswordHash
 import time
 import httpx
+import logging
+
+#Logbasicconfig
+logging.basicConfig(
+    level=logging.INFO
+)
+
+#Creating logger
+logger=logging.getLogger(__name__)
+
+
 
 #Required Parameters in JWT token creation
 SECRET_KEY="my-super-secret-key"
@@ -127,13 +138,16 @@ def get_users():
     response_model=UserResponse
     )
 def get_user(user_id: int):
+    logging.info(f"Fetching user with id={user_id}")
     with Session(engine) as session:
         user=session.get(User, user_id)
         if not user:
+            logger.warning(f"User with id={user_id} not found")
             raise HTTPException(
                 status_code=404,
                 detail=f"User with id {user_id} not found"
             )
+        logging.info(f"User with id={user_id} found")    
         return user
 
 #UPDATE USER DATA
@@ -354,8 +368,12 @@ async def request_timer(request: Request,call_next):
     
     duration=end_time-start_time
 
-    print(
-        f"INFO: {request.method} {request.url.path}"
+    # print(
+    #     f"INFO: {request.method} {request.url.path}"
+    #     f" completed in {duration:4f} seconds"
+    # )
+    logging.info(
+        f" {request.method} {request.url.path}"
         f" completed in {duration:4f} seconds"
     )
     return response
