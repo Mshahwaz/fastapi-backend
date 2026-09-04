@@ -181,3 +181,97 @@ Better:
 except Exception:
     logger.exception("Something failed")
     raise
+
+######################################  Configuration and Env variables ##################################
+
+Configuration means values that control how your application runs.
+
+Examples:
+
+Database URL
+Database username
+Database password
+JWT secret
+JWT expiration time
+External API URL
+Debug mode
+Application port
+
+These values can change depending on the environment.
+
+An environment variable is simply a value stored outside your Python source code that your application can read at runtime.
+
+For example, Windows can have:
+
+DATABASE_URL=postgresql+psycopg://...
+
+Then Python can read it.
+
+The standard Python way is:
+
+import os
+
+database_url = os.getenv("DATABASE_URL")
+
+
+Why this is useful for your backend
+
+Imagine your application:
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+Development environment:
+
+DATABASE_URL → development database
+SECRET_KEY   → development secret
+
+Production:
+
+DATABASE_URL → production database
+SECRET_KEY   → production secret
+
+Same Python code.
+
+Only the environment changes.
+
+                SAME CODE
+                    │
+          ┌─────────┴─────────┐
+          ▼                   ▼
+     Development          Production
+          │                   │
+     Dev configuration   Prod configuration
+
+This is one of the foundations of 12-factor application design.
+
+.env files
+
+Manually setting environment variables every time can become inconvenient during development.
+
+A common approach is a .env file:
+
+.env
+
+containing:
+
+DATABASE_URL=postgresql+psycopg://backend-svc-user:backend-svc-pass@localhost:5432/backend_db
+SECRET_KEY=my-super-secret-key
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+Then your application loads these values.
+
+But there is one extremely important rule:
+
+1. Install python-dotenv
+pip install python-dotenv
+
+This library loads variables from .env into the environment.
+
+in main file : 
+from dorenv import load_dotenv
+
+load_dotenv()
+
+then 
+use : os.getenv("")

@@ -9,6 +9,12 @@ from pwdlib import PasswordHash
 import time
 import httpx
 import logging
+from dotenv import load_dotenv
+import os
+
+
+#envvarsloader
+load_dotenv()
 
 #Logbasicconfig
 logging.basicConfig(
@@ -21,9 +27,11 @@ logger=logging.getLogger(__name__)
 
 
 #Required Parameters in JWT token creation
-SECRET_KEY="my-super-secret-key"
-ALGORITHM="HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+SECRET_KEY=os.getenv("SECRET_KEY")
+ALGORITHM=os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES=int(
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES","30") # 30:default if not found 
+)
 
 password_hash = PasswordHash.recommended()
 # use it as : hashed_password = password_hash.hash("password")
@@ -31,10 +39,7 @@ app=FastAPI()
 security=HTTPBearer()
 
 
-DATABASE_URL=(
-    "postgresql+psycopg://backend-svc-user:"
-    "backend-svc-pass@localhost:5432/backend_db"
-)
+DATABASE_URL=os.getenv("DATABASE_URL")
 
 engine=create_engine(DATABASE_URL)
 
