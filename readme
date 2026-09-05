@@ -1,1 +1,213 @@
 ################## Project Struture ##########################
+"""
+Seperate out routes based on thier functionality :
+
+Project_Backend/
+├── main.py
+├── config.py
+├── database.py
+├── models.py
+├── schemas.py
+│
+├── routes/
+│   ├── __init__.py
+│   └── users.py
+│
+├── tests/
+│   └── test_main.py
+│
+└── .env
+
+What is APIRouter?
+
+This is the key concept.
+
+Normally you have:
+
+app = FastAPI()
+
+# @app.get("/users")
+# def get_users():
+#     ...
+
+# With APIRouter, we create a group of routes:
+
+# from fastapi import APIRouter
+
+# router = APIRouter()
+
+# @router.get("/users")
+# def get_users():
+#     ...
+
+# The router isn't the FastAPI application itself.
+
+Think of it as:
+
+FastAPI application
+       │
+       ├── users router
+       │      ├── GET /users
+       │      ├── GET /users/{id}
+       │      ├── POST /users
+       │      └── DELETE /users/{id}
+       │
+       └── auth router
+              └── POST /login
+
+Then main.py connects those routers to the application.
+
+This is the architectural benefit:
+
+Before
+main.py
+│
+├── POST /users
+├── GET /users
+├── GET /users/{id}
+├── PUT /users/{id}
+├── PATCH /users/{id}
+├── DELETE /users/{id}
+├── POST /login
+├── GET /protected
+├── GET /admin/dashboard
+├── middleware
+├── authentication
+├── database
+├── models
+└── external APIs
+
+After this refactor
+main.py
+│
+├── create FastAPI app
+├── configure application
+└── include routers
+
+database.py
+└── database
+
+models.py
+└── database models
+
+schemas.py
+└── API schemas
+
+routes/
+└── users.py
+    ├── POST /users
+    ├── GET /users
+    ├── GET /users/{id}
+    ├── PUT /users/{id}
+    └── PATCH /users/{id}
+
+That's already a much more maintainable application.
+
+First: what is a route?
+
+You already know this:
+
+@app.get("/users")
+def get_users():
+    ...
+
+This means:
+
+"When somebody sends a GET request to /users, execute get_users()."
+
+So:
+
+GET /users
+      ↓
+get_users()
+
+The @app.get() is attaching the endpoint directly to the FastAPI application.
+
+2. What is the problem?
+
+Imagine your application eventually has:
+
+100 endpoints
+
+If we put all 100 here:
+
+app = FastAPI()
+
+@app.get(...)
+...
+
+@app.post(...)
+...
+
+@app.put(...)
+...
+
+@app.delete(...)
+...
+
+# 100 endpoints...
+
+main.py becomes enormous.
+
+So we say:
+
+"Let's group related endpoints into separate files."
+
+For example:
+
+users.py
+    ↓
+all user-related endpoints
+
+auth.py
+    ↓
+all authentication-related endpoints
+
+products.py
+    ↓
+all product-related endpoints
+3. What is APIRouter?
+
+This is the only new concept you need right now.
+
+Normally:
+
+app = FastAPI()
+
+creates the main application.
+
+Similarly:
+
+router = APIRouter()
+
+creates a mini collection of routes.
+
+Think of it like this:
+
+FastAPI application
+        │
+        ├── User Router
+        │
+        ├── Auth Router
+        │
+        └── Product Router
+
+The router is not another server.
+
+It is simply a way of grouping endpoints.
+
+
+But how does FastAPI know about this router?
+
+This is where main.py comes in.
+
+main.py:
+
+from fastapi import FastAPI
+
+from routes.users import router as users_router
+
+app = FastAPI()
+
+app.include_router(users_router)
+"""
