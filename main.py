@@ -13,11 +13,16 @@ from config import (
     SECRET_KEY,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
-    # DATABASE_URL -Already imported in from database
 )
 from database import engine, create_db_and_table
 from models import (
     User,
+    # User_create,    ---|
+    # UserResponse,      |-Imported from schema   
+    # UserUpdate,        |-   
+    # LoginRequest    ---|  
+)
+from schema import (
     User_create,
     UserResponse,
     UserUpdate,
@@ -51,48 +56,7 @@ password_hash = PasswordHash.recommended()
 app=FastAPI()
 security=HTTPBearer()
 
-
-# DATABASE_URL=os.getenv("DATABASE_URL") --(Update) will be imported directly from config 
-# engine=create_engine(DATABASE_URL) --(Update) will bw imported directly from database
-
-""" (Imported from models)
-# Request Model for client side schema validation
-class User_create(SQLModel):
-    name: str = pyField(min_length=2,max_length=50)
-    age: int = pyField(ge=0,le=120)
-    username: str
-    password: str
-
-#DATABASE MODEL for Database ops
-class User(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    name: str
-    age: int 
-    username: str
-    password: str
-    role: str = "user"
-
-#RESPONSE MODEL for client query response
-class UserResponse(SQLModel):
-    id: int
-    name: str
-    age: int
-    username: str
-
-#Update model 
-class UserUpdate(SQLModel):
-    name: str | None =pyField(default=None, min_length=2, max_length=50)
-    age: int | None = pyField(default=None, ge=0,le=120)
-
-# LoginRequest Model
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-def create_db_and_table():
-    SQLModel.metadata.create_all(engine)
-"""
-
+#Creating DB and Tables
 create_db_and_table()
 
 ########################################

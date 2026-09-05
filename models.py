@@ -1,11 +1,11 @@
 from sqlmodel import SQLModel, Field
-from pydantic import Field as pyField, BaseModel
+# from pydantic import Field as pyField, BaseModel
 
-class User_create(SQLModel):
-    name: str = pyField(min_length=2,max_length=50)
-    age: int = pyField(ge=0,le=120)
-    username: str
-    password: str
+# class User_create(SQLModel):
+#     name: str = pyField(min_length=2,max_length=50)
+#     age: int = pyField(ge=0,le=120)
+#     username: str
+#     password: str
 
 #DATABASE MODEL for Database ops
 class User(SQLModel, table=True):
@@ -16,19 +16,19 @@ class User(SQLModel, table=True):
     password: str
     role: str = "user"
 
-#RESPONSE MODEL for client query response
-class UserResponse(SQLModel):
-    id: int
-    name: str
-    age: int
-    username: str
+# #RESPONSE MODEL for client query response
+# class UserResponse(SQLModel):
+#     id: int
+#     name: str
+#     age: int
+#     username: str
 
-#Update model 
-class UserUpdate(SQLModel):
-    name: str | None =pyField(default=None, min_length=2, max_length=50)
-    age: int | None = pyField(default=None, ge=0,le=120)
+# #Update model 
+# class UserUpdate(SQLModel):
+#     name: str | None =pyField(default=None, min_length=2, max_length=50)
+#     age: int | None = pyField(default=None, ge=0,le=120)
 
-# LoginRequest Model
-class LoginRequest(BaseModel):
-    username: str
-    password: str
+# # LoginRequest Model
+# class LoginRequest(BaseModel):
+#     username: str
+#     password: str

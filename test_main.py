@@ -173,7 +173,7 @@ def test_update_valid_age_range(): #Business logic Validation
     )
 
 def test_patch_name_only(): #Age should not be changed
-    user_id=5
+    user_id=30
     before=client.get(
         f"/users/{user_id}"
     )
@@ -195,7 +195,7 @@ def test_patch_name_only(): #Age should not be changed
     assert "password" not in data_after
 
 def test_patch_age_only(): #Name should not be changed
-    user_id=5
+    user_id=30
     before=client.get(
         f"/users/{user_id}"
     )
@@ -527,7 +527,7 @@ def test_delete_existuser_with_admin_user():
 
     token=login_data.json()["access_token"]
     
-    user_id=5
+    user_id=16
     delete_response=client.delete(
         f"/users/{user_id}",
         headers={
