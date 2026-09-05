@@ -438,4 +438,89 @@ dependencies/auth.py
        ├── models.py
        └── config.py
 
+------------------------
+
+We have now separated authentication dependencies.
+
+The next logical step is separating the authentication endpoint itself.
+
+There is an important distinction:
+
+dependencies/auth.py
+        ↓
+"Is this request/user authenticated?"
+"Is this user an admin?"
+
+versus:
+
+routes/auth.py
+        ↓
+POST /login
+
+The first is reusable authentication logic used by other routes.
+
+The second is an actual API endpoint.
+
+1. Create routes/auth.py
+
+Your structure becomes:
+
+routes/
+│
+├── __init__.py
+├── users.py
+└── auth.py          ← NEW
+2. What does /login actually do?
+
+Your login endpoint currently performs roughly this flow:
+
+POST /login
+     │
+     ▼
+Receive username + password
+     │
+     ▼
+Find user in PostgreSQL
+     │
+     ├── User doesn't exist → 401
+     │
+     ▼
+Verify password hash
+     │
+     ├── Wrong password → 401
+     │
+     ▼
+Create JWT
+     │
+     ▼
+Return token
+
+That is clearly authentication functionality, so it belongs in:
+
+Think of main.py now as the assembly point:
+
+main.py
+│
+├── create FastAPI application
+│
+├── include users router
+│
+└── include auth router
+
+It doesn't need to know how login works.
+
+You should now have:
+
+routes/
+│
+├── users.py
+│   ├── POST /register
+│   ├── GET /users
+│   ├── GET /users/{id}
+│   ├── PUT /users/{id}
+│   ├── PATCH /users/{id}
+│   └── DELETE /users/{id}
+│
+└── auth.py
+    └── POST /login
 """

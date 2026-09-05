@@ -33,7 +33,7 @@ from dependencies.auth import (
     get_current_user,
     require_admin
 )
-
+from routes.auth import router as auth_router
 
 
 # from dotenv import load_dotenv
@@ -63,6 +63,8 @@ password_hash = PasswordHash.recommended()
 # use it as : hashed_password = password_hash.hash("password")
 app=FastAPI()
 app.include_router(users_router)
+app.include_router(auth_router)
+
 security=HTTPBearer()
 
 #Creating DB and Tables
@@ -272,46 +274,46 @@ def send_email():
 #         }
 
 #Login (Authentication)
-@app.post(
-    "/login",status_code=status.HTTP_200_OK
-    )
-def login(login_data: LoginRequest):
-    ##################### Actual DB query User authentication ######################
-    with Session(engine) as session:
-        statement=select(User).where(
-            User.username == login_data.username
-        )
-        db_user= session.exec(statement).first()
-        if db_user is None:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid Username or password"
-            )
-        if not password_hash.verify(
-            login_data.password,
-            db_user.password
-        ):
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid Username or password"
-            )
+# @app.post(
+#     "/login",status_code=status.HTTP_200_OK
+#     )
+# def login(login_data: LoginRequest):
+#     ##################### Actual DB query User authentication ######################
+#     with Session(engine) as session:
+#         statement=select(User).where(
+#             User.username == login_data.username
+#         )
+#         db_user= session.exec(statement).first()
+#         if db_user is None:
+#             raise HTTPException(
+#                 status_code=401,
+#                 detail="Invalid Username or password"
+#             )
+#         if not password_hash.verify(
+#             login_data.password,
+#             db_user.password
+#         ):
+#             raise HTTPException(
+#                 status_code=401,
+#                 detail="Invalid Username or password"
+#             )
 
-    expire=datetime.now(timezone.utc)+timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload={
-        "sub":db_user.username,
-        "role": db_user.role,
-        "exp":expire
-    }
-    token =jwt.encode(
-        payload,
-        SECRET_KEY,
-        algorithm=ALGORITHM
-    )
-    return {
-        "message" : "Login Successfull",
-        "access_token":token, #Generated JWT token
-        "token_type":"bearer" 
-    }
+#     expire=datetime.now(timezone.utc)+timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+#     payload={
+#         "sub":db_user.username,
+#         "role": db_user.role,
+#         "exp":expire
+#     }
+#     token =jwt.encode(
+#         payload,
+#         SECRET_KEY,
+#         algorithm=ALGORITHM
+#     )
+#     return {
+#         "message" : "Login Successfull",
+#         "access_token":token, #Generated JWT token
+#         "token_type":"bearer" 
+#     }
 
 
 #Protected Endpoint (Accessible only for authenticated Users (anyone))
