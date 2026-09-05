@@ -514,7 +514,7 @@ def test_admin_dashboard_without_token():
 
     assert response.status_code == 401
 
-def test_delete_existuser_with_admin_user():
+def test_delete_exist_user_with_admin():
     login_data=client.post(
     "/login",
     json={
@@ -527,7 +527,7 @@ def test_delete_existuser_with_admin_user():
 
     token=login_data.json()["access_token"]
     
-    user_id=33
+    user_id=39
     delete_response=client.delete(
         f"/users/{user_id}",
         headers={

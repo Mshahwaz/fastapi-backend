@@ -11,6 +11,7 @@ from models import User
 from database import engine
 import logging
 from dependencies.auth import require_admin
+from services.user_service import create_user
 
 logging.basicConfig(
     level=logging.INFO
@@ -26,29 +27,32 @@ password_hash=PasswordHash.recommended()
     response_model=UserResponse
     )
 def register_user(user: User_create,background_task: BackgroundTasks):
-    if user.age < 18:
-        raise HTTPException(
-            status_code=400,
-            detail="User  must be al least 18 years"
-        )
-    ###############
-    with Session(engine) as session:
-        hashed_password = password_hash.hash(user.password)
-        db_user=User(
-            name = user.name,
-            age = user.age,
-            username = user.username,
-            password = hashed_password,
-            role = "role"
-        ) #creating DB user obj mapped to user table
-        session.add(db_user)
-        session.commit()
-        session.refresh(db_user)
+    response=create_user(user)
+    return response
+    #-- whole logic will be perfomed by user-service--#
+    # if user.age < 18:
+    #     raise HTTPException(
+    #         status_code=400,
+    #         detail="User  must be al least 18 years"
+    #     )
+    # ###############
+    # with Session(engine) as session:
+    #     hashed_password = password_hash.hash(user.password)
+    #     db_user=User(
+    #         name = user.name,
+    #         age = user.age,
+    #         username = user.username,
+    #         password = hashed_password,
+    #         role = "role"
+    #     ) #creating DB user obj mapped to user table
+    #     session.add(db_user)
+    #     session.commit()
+    #     session.refresh(db_user)
 
-        ##Background Task
-        # background_task.add_task(send_email) #Will execute after sending request response back 
+    #     ##Background Task
+    #     # background_task.add_task(send_email) #Will execute after sending request response back 
 
-        return db_user
+    #     return db_user
 
 
 #GET ALL USERS
