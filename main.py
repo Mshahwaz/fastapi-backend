@@ -13,7 +13,15 @@ from config import (
     SECRET_KEY,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
-    DATABASE_URL
+    # DATABASE_URL -Already imported in from database
+)
+from database import engine, create_db_and_table
+from models import (
+    User,
+    User_create,
+    UserResponse,
+    UserUpdate,
+    LoginRequest
 )
 # from dotenv import load_dotenv
 # import os --not required as config handels 
@@ -45,11 +53,10 @@ security=HTTPBearer()
 
 
 # DATABASE_URL=os.getenv("DATABASE_URL") --(Update) will be imported directly from config 
+# engine=create_engine(DATABASE_URL) --(Update) will bw imported directly from database
 
-engine=create_engine(DATABASE_URL)
-
-
-#Request Model for client side schema validation
+""" (Imported from models)
+# Request Model for client side schema validation
 class User_create(SQLModel):
     name: str = pyField(min_length=2,max_length=50)
     age: int = pyField(ge=0,le=120)
@@ -72,7 +79,7 @@ class UserResponse(SQLModel):
     age: int
     username: str
 
-#To patch the feilds
+#Update model 
 class UserUpdate(SQLModel):
     name: str | None =pyField(default=None, min_length=2, max_length=50)
     age: int | None = pyField(default=None, ge=0,le=120)
@@ -84,6 +91,7 @@ class LoginRequest(BaseModel):
 
 def create_db_and_table():
     SQLModel.metadata.create_all(engine)
+"""
 
 create_db_and_table()
 
