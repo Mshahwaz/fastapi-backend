@@ -619,4 +619,4 @@ test_login
 test_protected_endpoint
 test_admin_access
 test_invalid_user
-test_invalid_logi
+test_invalid_login

@@ -117,7 +117,7 @@ def register_user(user: User_create,background_task: BackgroundTasks):
             age = user.age,
             username = user.username,
             password = hashed_password,
-            role = "user"
+            role = "admin"
         ) #creating DB user obj mapped to user table
         session.add(db_user)
         session.commit()
@@ -223,7 +223,7 @@ def patch_user(userobj: UserUpdate,user_id: int):
         session.refresh(user)
         return user
 
-#Resuable Authenticatin dependency (This fn is responsible for user authentication)
+#Resuable Authentication dependency (This fn is responsible for user authentication)
 def get_current_user(
 credentials: HTTPAuthorizationCredentials = Depends(security)
     ):
