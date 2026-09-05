@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 from models import User  
 from database import engine
 import logging
+from dependencies.auth import require_admin
 
 logging.basicConfig(
     level=logging.INFO

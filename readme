@@ -210,4 +210,232 @@ from routes.users import router as users_router
 app = FastAPI()
 
 app.include_router(users_router)
+
+Put DELETE in users.py
+
+Your endpoint should conceptually look like:
+
+@router.delete("/users/{user_id}")
+def delete_user(
+    user_id: int,
+    current_user: User = Depends(require_admin)
+):
+    with Session(engine) as session:
+
+        user = session.get(User, user_id)
+
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User with id {user_id} not found"
+            )
+
+        session.delete(user)
+        session.commit()
+
+        return {"message": f"User {user_id} deleted successfully"}
+
+But don't copy this blindly if your current DELETE implementation differs.
+
+The important thing is:
+
+@app.delete(...)
+
+becomes:
+
+@router.delete(...)
+
+and the existing function logic moves unchanged.
+
+2. The problem you'll encounter
+
+users.py needs:
+
+Depends(require_admin)
+
+But require_admin() currently lives in main.py.
+
+You might be tempted to do:
+
+from main import require_admin
+
+Don't do that.
+
+Why?
+
+Because main.py already does:
+
+from routes.users import router as users_router
+
+So we'd get:
+
+main.py
+   ↓
+users.py
+   ↓
+main.py
+
+That's a circular import.
+
+This is actually a useful problem because it shows us why the next architectural layer exists.
+
+3. Create dependencies/
+
+Create:
+
+dependencies/
+└── __init__.py
+
+Then eventually:
+
+dependencies/
+└── auth.py
+
+The purpose will be:
+
+dependencies/auth.py
+│
+├── get_current_user()
+└── require_admin()
+
+These functions aren't really routes.
+
+They're dependencies used by routes.
+
+So the architecture becomes:
+
+                  main.py
+                     │
+              FastAPI application
+                     │
+             ┌───────┴────────┐
+             ▼                ▼
+        users_router       auth_router
+             │
+             ▼
+         users.py
+             │
+             │ Depends()
+             ▼
+       dependencies/auth.py
+             │
+             ▼
+          database
+
+This is the reason we're separating things instead of putting everything in main.py
+
+Let's understand the dependency chain
+
+Your DELETE endpoint will eventually look like:
+
+DELETE /users/5
+       │
+       ▼
+require_admin()
+       │
+       ▼
+get_current_user()
+       │
+       ▼
+JWT validation
+       │
+       ▼
+Find user in PostgreSQL
+       │
+       ▼
+Check role == "admin"
+       │
+       ├── NO → 403
+       │
+       └── YES
+             ↓
+       delete_user()
+
+That's a clean separation of responsibilities.
+
+Step 1 — Create dependencies
+
+Create:
+
+dependencies/
+
+Inside it:
+
+dependencies/
+└── __init__.py
+
+Then create:
+
+dependencies/
+└── auth.py
+Step 2 — Move authentication code
+
+Your existing get_current_user() and require_admin() are currently in main.py.
+
+We are going to move those exact functions into:
+
+dependencies/auth.py
+
+But don't just start copying yet.
+
+There is an important dependency chain inside those functions.
+
+get_current_user() needs:
+
+HTTPAuthorizationCredentials
+HTTPBearer
+Depends
+HTTPException
+JWTError
+jwt
+Session
+select
+User
+engine
+SECRET_KEY
+ALGORITHM
+security
+
+So auth.py will need its own imports.
+
+Conceptually:
+
+auth.py
+│
+├── JWT configuration ← config.py
+├── database engine    ← database.py
+├── User model         ← models.py
+└── FastAPI security   ← FastAPI
+
+That is exactly what we want.
+
+The target is:
+Project_Backend/
+│
+├── main.py
+├── config.py
+├── database.py
+├── models.py
+├── schemas.py
+│
+├── routes/
+│   ├── __init__.py
+│   └── users.py
+│
+└── dependencies/
+    ├── __init__.py
+    └── auth.py
+
+And the dependency flow becomes:
+
+routes/users.py
+       │
+       │ Depends(require_admin)
+       ▼
+dependencies/auth.py
+       │
+       ├── database.py
+       ├── models.py
+       └── config.py
+
 """

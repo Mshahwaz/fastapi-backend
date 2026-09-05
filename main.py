@@ -29,6 +29,10 @@ from schema import (
     LoginRequest
 )
 from routes.users import router as users_router
+from dependencies.auth import (
+    get_current_user,
+    require_admin
+)
 
 
 
@@ -201,71 +205,71 @@ def send_email():
 #         return user
 
 #Resuable Authentication dependency (This fn is responsible for user authentication)
-def get_current_user(
-credentials: HTTPAuthorizationCredentials = Depends(security)
-    ):
-    token=credentials.credentials
-    try:
-        payload=jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
-        )
-        username=payload.get("sub")
-        if username is None:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid Token"
-            )
-        # return username
-    except JWTError:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid or Expired token"
-        )
-    with Session(engine) as session:
-        statement=select(User).where(
-            User.username == username
-        )
+# def get_current_user(
+# credentials: HTTPAuthorizationCredentials = Depends(security)
+#     ):
+#     token=credentials.credentials
+#     try:
+#         payload=jwt.decode(
+#             token,
+#             SECRET_KEY,
+#             algorithms=[ALGORITHM]
+#         )
+#         username=payload.get("sub")
+#         if username is None:
+#             raise HTTPException(
+#                 status_code=401,
+#                 detail="Invalid Token"
+#             )
+#         # return username
+#     except JWTError:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Invalid or Expired token"
+#         )
+#     with Session(engine) as session:
+#         statement=select(User).where(
+#             User.username == username
+#         )
 
-        db_user=session.exec(statement).first()
+#         db_user=session.exec(statement).first()
 
-        if db_user is None:
-            raise HTTPException(
-                status_code=401,
-                detail="User not found"
-            )
-        return db_user
+#         if db_user is None:
+#             raise HTTPException(
+#                 status_code=401,
+#                 detail="User not found"
+#             )
+#         return db_user
 
-#Resuable admin verification dependency (This fn is responsible for admin authorization)
-def require_admin(
-    current_user: User = Depends(get_current_user)
-    ):
-        ########### Check if a user is a admin or normal user ################ 
-    # time.sleep(10) - for middleware testing
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=403,
-            detail="Admin Access required"
-        )
-    return current_user
+# #Resuable admin verification dependency (This fn is responsible for admin authorization)
+# def require_admin(
+#     current_user: User = Depends(get_current_user)
+#     ):
+#         ########### Check if a user is a admin or normal user ################ 
+#     # time.sleep(10) - for middleware testing
+#     if current_user.role != "admin":
+#         raise HTTPException(
+#             status_code=403,
+#             detail="Admin Access required"
+#         )
+#     return current_user
     ####################################################################       
 
 #DELETE USER with user id (Protected Endpoint only admin role can delete a user)
-@app.delete("/users/{user_id}")
-def del_user(user_id: int,current_user: User = Depends(require_admin)):
-    with Session(engine) as session:
-        user=session.get(User, user_id)
-        if not user:
-            raise HTTPException(
-                status_code=404,
-                detail=f"User not found with id {user_id}"
-            )
-        session.delete(user)
-        session.commit()
-        return {
-            "message" : f"User with id {user_id} has been removed successfully"
-        }
+# @app.delete("/users/{user_id}")
+# def del_user(user_id: int,current_user: User = Depends(require_admin)):
+#     with Session(engine) as session:
+#         user=session.get(User, user_id)
+#         if not user:
+#             raise HTTPException(
+#                 status_code=404,
+#                 detail=f"User not found with id {user_id}"
+#             )
+#         session.delete(user)
+#         session.commit()
+#         return {
+#             "message" : f"User with id {user_id} has been removed successfully"
+#         }
 
 #Login (Authentication)
 @app.post(
