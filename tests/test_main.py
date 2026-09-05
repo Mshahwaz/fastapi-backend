@@ -527,7 +527,7 @@ def test_delete_exist_user_with_admin():
 
     token=login_data.json()["access_token"]
     
-    user_id=39
+    user_id=46
     delete_response=client.delete(
         f"/users/{user_id}",
         headers={

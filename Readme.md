@@ -206,3 +206,80 @@ services/
 └── ...
 
 Each service represents a logical area of the application
+
+We've progressively separated it into:
+
+Project_Backend/
+│
+├── main.py
+│
+├── config.py
+│
+├── database.py
+│
+├── models.py
+│
+├── schemas.py
+│
+├── dependencies/
+│   └── auth.py
+│
+├── routes/
+│   ├── users.py
+│   └── auth.py
+│
+├── services/
+│   ├── auth_service.py
+│   └── user_service.py
+│
+└── tests/
+    └── test_main.py
+
+And the request flow is now:
+
+                         CLIENT
+                            │
+                            ▼
+                       FastAPI
+                            │
+                            ▼
+                    ┌──────────────┐
+                    │    ROUTE     │
+                    │              │
+                    │ HTTP layer   │
+                    └──────┬───────┘
+                           │
+                 ┌─────────┴─────────┐
+                 │                   │
+                 ▼                   ▼
+          DEPENDENCIES           SERVICE
+                 │                   │
+          Authentication        Business Logic
+          Authorization               │
+                 │                   │
+                 └─────────┬─────────┘
+                           ▼
+                        MODEL
+                           │
+                           ▼
+                       DATABASE
+                           │
+                           ▼
+                      PostgreSQL
+
+This is the point where I want you to understand something important:
+
+This isn't about putting files into folders just to make the project look professional.
+
+Each layer now has a specific responsibility.
+
+Layer	Responsibility
+
+routes/	HTTP endpoints
+services/	Application/business logic
+dependencies/	Reusable request dependencies
+schemas.py	API input/output structures
+models.py	Database entities
+database.py	Database connection
+config.py	Configuration
+tests/	Verification

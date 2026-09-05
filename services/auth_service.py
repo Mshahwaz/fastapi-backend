@@ -16,7 +16,7 @@ password_hash=PasswordHash.recommended()
 def authenticate_user(username: str, password: str):
     with Session(engine) as session:
         statement=select(User).where(
-            User.username == username#login_data.username
+            User.username == username
         )
         db_user= session.exec(statement).first()
         if db_user is None:
@@ -25,7 +25,6 @@ def authenticate_user(username: str, password: str):
                 detail="Invalid Username or password"
             )
         if not password_hash.verify(
-            # login_data.password,
             password,
             db_user.password
         ):
