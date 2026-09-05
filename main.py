@@ -124,7 +124,7 @@ def register_user(user: User_create,background_task: BackgroundTasks):
         session.refresh(db_user)
 
         ##Background Task
-        background_task.add_task(send_email) #Will execute after sendind request response back 
+        # background_task.add_task(send_email) #Will execute after sendind request response back 
 
         return db_user
 
@@ -163,7 +163,8 @@ def get_user(user_id: int):
 #UPDATE USER DATA
 @app.put(
     "/users/{user_id}",
-    response_model=UserResponse
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK
     )
 def update_user(userobj: User_create,user_id: int):
     with Session(engine) as session:
@@ -183,6 +184,8 @@ def update_user(userobj: User_create,user_id: int):
 
         user.name=userobj.name
         user.age=userobj.age
+        user.username = userobj.username
+        user.password = password_hash.hash(userobj.password)
 
         session.add(user)
         session.commit()
@@ -193,7 +196,8 @@ def update_user(userobj: User_create,user_id: int):
 #PATCH USER FEILDS
 @app.patch(
     "/users/{user_id}",
-    response_model=UserResponse
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK
     )
 def patch_user(userobj: UserUpdate,user_id: int):
     with Session(engine) as session:
@@ -456,4 +460,3 @@ async def send_to_external_api(user_data: External_api_users):
     response_payload=response.json()
     response_payload.setdefault("status","Query Successfull")
     return response_payload
-

@@ -84,6 +84,7 @@ ERROR
   ▼
 CRITICAL
      serious application/system failure
+
 Example
 INFO
 User successfully logged in
@@ -355,3 +356,267 @@ from config import (
     ALGORITHM,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
+
+################################## API testing ###############################################
+
+So far, you've been doing:
+
+Swagger
+   ↓
+Execute
+   ↓
+Look at response
+   ↓
+Manually decide: "Looks correct"
+
+That's manual testing.
+
+Now we want Python to do the checking for us.
+
+Code
+ ↓
+Automated test
+ ↓
+Call API
+ ↓
+Check response
+ ↓
+PASS / FAIL
+
+This is extremely important in backend development and CI/CD
+
+What exactly is a test?
+
+Suppose your endpoint says:
+
+@app.get("/users/{user_id}")
+def get_user(user_id: int):
+    ...
+
+We expect:
+
+GET /users/1
+        ↓
+200 OK
+
+So we can write a test saying:
+
+"Call /users/1. I expect HTTP status 200."
+
+That's essentially what testing is:
+
+INPUT
+  ↓
+APPLICATION
+  ↓
+EXPECTED OUTPUT
+2. The tool we'll use
+
+Python has a popular testing framework:
+
+pytest
+
+Install:
+
+pip install pytest
+
+For testing FastAPI specifically, we'll use:
+
+FastAPI TestClient
+
+It allows us to make requests against our FastAPI application without manually opening Swagger.
+
+3. Your first test
+
+Create:
+
+backend/
+│
+├── main.py
+├── test_main.py
+├── config.py
+└── .env
+
+Inside test_main.py:
+
+from fastapi.testclient import TestClient
+from main import app
+
+client = TestClient(app)
+
+
+def test_logging_demo():
+
+    response = client.get("/logging-demo")
+
+    assert response.status_code == 200
+
+That's our first automated API test.
+
+Import TestClient
+from fastapi.testclient import TestClient
+
+FastAPI provides this testing client.
+
+Conceptually:
+
+TestClient
+    ↓
+behaves like an HTTP client
+    ↓
+calls your FastAPI application
+Import your application
+from main import app
+
+Remember your application:
+
+app = FastAPI()
+
+We're importing that application into our test.
+
+Create the client
+client = TestClient(app)
+
+Now we have something that can do:
+
+client.get(...)
+client.post(...)
+client.put(...)
+client.patch(...)
+client.delete(...)
+
+Very similar to what we learned with httpx.
+
+But there's an important difference:
+
+httpx
+   ↓
+normally communicates over HTTP/network
+
+TestClient
+   ↓
+used to test your FastAPI application
+5. The actual test
+def test_logging_demo():
+
+Pytest recognizes functions beginning with:
+
+test_
+
+as tests.
+
+Then:
+
+response = client.get("/logging-demo")
+
+is effectively saying:
+
+Make a GET request to my /logging-demo endpoint.
+
+Then:
+
+assert response.status_code == 200
+
+means:
+
+I expect the response status code to be 200.
+
+If it is:
+
+200 == 200
+
+the test passes.
+
+If it is:
+
+404 == 200
+
+the test fails.
+
+6. Run the test
+
+From your project directory:
+
+pytest
+
+You should see something similar to:
+
+================ test session starts ================
+
+test_main.py .                                  [100%]
+
+================ 1 passed ================
+
+The:
+
+.
+
+means the test passed.
+
+Status code alone isn't enough.
+
+Suppose your endpoint returns:
+
+{
+    "message": "Logging demo completed"
+}
+
+We can verify that too:
+
+def test_logging_demo():
+
+    response = client.get("/logging-demo")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "message": "Logging demo completed"
+    }
+
+Now we're testing:
+
+HTTP status
+      +
+Response body
+
+Testing POST requests
+
+You already learned that POST usually contains a JSON body.
+
+So:
+
+response = client.post(
+    "/register",
+    json={
+        "name": "Test User",
+        "age": 25,
+        "username": "testuser",
+        "password": "testpassword"
+    }
+)
+
+Now things become more interesting.
+
+Your application has:
+
+POST /register
+GET /users
+GET /users/{user_id}
+PUT /users/{user_id}
+PATCH /users/{user_id}
+DELETE /users/{user_id}
+POST /login
+GET /protected
+GET /admin/dashboard
+
+We can eventually create tests like:
+
+test_register_user
+test_get_users
+test_get_single_user
+test_update_user
+test_patch_user
+test_login
+test_protected_endpoint
+test_admin_access
+test_invalid_user
+test_invalid_logi

@@ -2,6 +2,6 @@ __pycache__/
 
 *.txt
 
-logging-demo.py
+logging_demo.py
 
 .env
