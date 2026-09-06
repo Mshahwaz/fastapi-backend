@@ -26,7 +26,7 @@ def create_user(user: User_create,session: Session):
         age = user.age,
         username = user.username,
         password = hashed_password,
-        role = "role"
+        role = "user"
     ) #creating DB user obj mapped to user table
     session.add(db_user)
     session.commit()
