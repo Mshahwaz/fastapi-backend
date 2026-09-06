@@ -1,0 +1,21 @@
+services:
+
+  backend:
+    build: .
+    container_name: compose-backend-api
+    ports:
+      - "8001:8000"
+    env_file:
+      - docker-compose.env
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16
+    container_name: compose-backend-postgres
+    environment:
+      POSTGRES_USER: backend-svc-user
+      POSTGRES_PASSWORD: backend-svc-pass
+      POSTGRES_DB: backend_db
+    # ports:
+    #   - "5432:5432"
