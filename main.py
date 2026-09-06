@@ -1,27 +1,14 @@
 from fastapi import FastAPI, HTTPException , status, Header, Depends, Request, BackgroundTasks
-from sqlmodel import Field, Session, SQLModel, create_engine, select
 from pydantic import Field as pyField , BaseModel
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
-# from pwdlib import PasswordHash
 import time
 import httpx
 import logging
-# from config import (
-#     SECRET_KEY,
-#     ACCESS_TOKEN_EXPIRE_MINUTES,
-#     ALGORITHM,
-# )
 from database import engine, create_db_and_table
 from models import User
-from schema import (
-    User_create,
-    UserResponse,
-    UserUpdate,
-    LoginRequest
-)
 from routes.users import router as users_router
 from dependencies.auth import (
     get_current_user,
@@ -39,8 +26,6 @@ logging.basicConfig(
 logger=logging.getLogger(__name__)
 
 
-# password_hash = PasswordHash.recommended()
-# use it as : hashed_password = password_hash.hash("password")
 app=FastAPI()
 app.include_router(users_router)
 app.include_router(auth_router)
@@ -50,7 +35,6 @@ security=HTTPBearer()
 #Creating DB and Tables
 create_db_and_table()
 
-########################################
 
 ##### For BG TASK ####
 def send_email():

@@ -47,4 +47,4 @@ def authenticate_user(username: str, password: str):
         "message" : "Login Successfull",
         "access_token":token, #Generated JWT token
         "token_type":"bearer" 
-    }
+    } 

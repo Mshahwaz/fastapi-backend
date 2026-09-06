@@ -3,7 +3,6 @@ from schema import LoginRequest
 from services.auth_service import authenticate_user
 
 router=APIRouter()
-# password_hash=PasswordHash.recommended()
 
 #Login (Authentication)
 @router.post(

@@ -5,15 +5,6 @@ client=TestClient(app)
 from config import SECRET_KEY, ALGORITHM
 from jose import jwt
 
-# def test_logging_demo():
-
-#     response=client.get("/logging-demo")
-
-#     assert response.status_code == 200
-#     assert response.json() == {
-#         "message" : "Logging demo completed"
-#     }
-
 def test_register_user():
     response = client.post(
         "/register",
@@ -527,7 +518,7 @@ def test_delete_exist_user_with_admin():
 
     token=login_data.json()["access_token"]
     
-    user_id=46
+    user_id=50
     delete_response=client.delete(
         f"/users/{user_id}",
         headers={

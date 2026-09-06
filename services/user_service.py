@@ -117,4 +117,5 @@ def delete_user(user_id):
         session.commit()
         return {
             "message" : f"User with id {user_id} has been removed successfully"
-        }
+        } 
+        
