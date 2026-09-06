@@ -1063,3 +1063,416 @@ Conceptually:
 FastAPI can execute the dependency up to yield, provide the yielded value to your route, and then execute the cleanup portion afterward.
 
 That's why this pattern is common for database sessions.
+
+<----Session Lifecycle and Transaction Boundaries ---->
+
+Now we have a much cleaner architecture.
+
+For a protected request:
+
+                 HTTP Request
+                      │
+                      ↓
+                get_session()
+                      │
+                      ↓
+                   Session
+                  /       \
+                 /         \
+                ↓           ↓
+     get_current_user()   Route
+                │           │
+                ↓           ↓
+              User       Service
+                            │
+                            ↓
+                         Database
+
+But there's a subtle question:
+
+If get_current_user() uses the session and the route/service also uses the session, when does the transaction actually begin and end?
+
+This is what we need to understand now.
+
+1. Session ≠ transaction
+
+These two concepts are related, but they're not identical.
+
+Think:
+
+Engine
+  ↓
+Session
+  ↓
+Transaction
+  ↓
+SQL operations
+
+A Session is the object your application uses to interact with the database.
+
+A transaction is the atomic unit of database work.
+
+For example:
+
+session.add(user)
+
+session.commit()
+
+The commit() is what makes the pending database changes permanent.
+
+2. Your current GET request
+
+Consider:
+
+def get_all_users(session: Session):
+    users = session.exec(
+        select(User)
+    ).all()
+
+    return users
+
+There is no:
+
+session.commit()
+
+because we're only reading.
+
+The flow is approximately:
+
+GET /users
+    ↓
+get_session()
+    ↓
+Session
+    ↓
+SELECT ...
+    ↓
+Return users
+    ↓
+Session closes
+
+No data modification is being committed.
+
+3. Your POST request
+
+Registration is different:
+
+def create_user(user: User_create, session: Session):
+
+    db_user = User(...)
+
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+
+    return db_user
+
+Flow:
+
+POST /register
+       ↓
+get_session()
+       ↓
+Session
+       ↓
+session.add()
+       ↓
+session.commit()
+       ↓
+Database permanently updated
+       ↓
+session.refresh()
+       ↓
+return User
+       ↓
+Session closes
+
+The key operation is:
+
+session.commit()
+4. What does commit() actually mean?
+
+Suppose you do:
+
+session.add(db_user)
+
+At this point, don't think:
+
+"The user definitely exists in PostgreSQL."
+
+Think:
+
+"I've told the session that I want this object persisted."
+
+Then:
+
+session.commit()
+
+means approximately:
+
+Pending changes
+      ↓
+Commit transaction
+      ↓
+Database confirms changes
+      ↓
+Changes become durable
+5. What if something fails?
+
+Suppose:
+
+session.add(user1)
+session.add(user2)
+
+# something fails here
+
+You can do:
+
+session.rollback()
+
+Conceptually:
+
+Operation 1 ──┐
+Operation 2 ──┤
+Operation 3 ──┤
+              ↓
+           ERROR
+              ↓
+          ROLLBACK
+              ↓
+      Database returns
+      to previous state
+
+This is the atomicity part of transactions.
+
+Why the injected session becomes important
+
+Imagine a real endpoint:
+
+POST /orders
+
+The operation requires:
+
+1. Create Order
+2. Create OrderItems
+3. Decrease Inventory
+
+We might have:
+
+def create_order(session: Session):
+    ...
+
+def create_order_items(session: Session):
+    ...
+
+def update_inventory(session: Session):
+    ...
+
+The route can provide the same session:
+
+                    Session
+                       │
+           ┌───────────┼───────────┐
+           ↓           ↓           ↓
+      create_order  create_items  inventory
+           │           │           │
+           └───────────┼───────────┘
+                       ↓
+                    COMMIT
+
+Now these operations can participate in one transaction.
+
+This is much harder to control if every service does:
+
+with Session(engine) as session:
+
+independently.
+
+7. Where should commit() live?
+
+This is an important architectural decision.
+
+For your current project, you've probably got:
+
+def create_user(user, session):
+    ...
+    session.commit()
+
+That's perfectly reasonable for the simple CRUD architecture we're building.
+
+But as applications become more complex, teams often establish a clearer transaction boundary around a use case.
+
+For example:
+
+Route
+  ↓
+Service / Use Case
+  ↓
+multiple database operations
+  ↓
+commit
+
+The key principle is:
+
+The component responsible for the complete business operation should control the transaction boundary.
+
+Don't blindly put commit() after every tiny database operation.
+
+Why the injected session becomes important
+
+Imagine a real endpoint:
+
+POST /orders
+
+The operation requires:
+
+1. Create Order
+2. Create OrderItems
+3. Decrease Inventory
+
+We might have:
+
+def create_order(session: Session):
+    ...
+
+def create_order_items(session: Session):
+    ...
+
+def update_inventory(session: Session):
+    ...
+
+The route can provide the same session:
+
+                    Session
+                       │
+           ┌───────────┼───────────┐
+           ↓           ↓           ↓
+      create_order  create_items  inventory
+           │           │           │
+           └───────────┼───────────┘
+                       ↓
+                    COMMIT
+
+Now these operations can participate in one transaction.
+
+This is much harder to control if every service does:
+
+with Session(engine) as session:
+
+independently.
+
+7. Where should commit() live?
+
+This is an important architectural decision.
+
+For your current project, you've probably got:
+
+def create_user(user, session):
+    ...
+    session.commit()
+
+That's perfectly reasonable for the simple CRUD architecture we're building.
+
+But as applications become more complex, teams often establish a clearer transaction boundary around a use case.
+
+For example:
+
+Route
+  ↓
+Service / Use Case
+  ↓
+multiple database operations
+  ↓
+commit
+
+The key principle is:
+
+The component responsible for the complete business operation should control the transaction boundary.
+
+Don't blindly put commit() after every tiny database operation.
+
+
+Engine vs Session
+
+This is the last piece I want you to understand before we move into Dockerizing the backend.
+
+Your database.py currently has essentially:
+
+from sqlmodel import SQLModel, create_engine, Session
+
+from config import DATABASE_URL
+
+engine = create_engine(DATABASE_URL)
+
+def create_db_and_table():
+    SQLModel.metadata.create_all(engine)
+
+def get_session():
+    with Session(engine) as session:
+        yield session
+
+There are two different objects here:
+
+engine
+session
+
+They have very different responsibilities.
+
+1. What is the Engine?
+
+Think of the engine as your application's database infrastructure/configuration.
+
+engine = create_engine(DATABASE_URL)
+
+It knows things such as:
+
+Which database?
+Which host?
+Which port?
+Which credentials?
+How should connections be managed?
+
+Conceptually:
+
+FastAPI Application
+       │
+       ↓
+     Engine
+       │
+       ↓
+ Connection Pool
+       │
+       ↓
+ PostgreSQL
+
+The engine is generally created once when the application starts, not once per HTTP request.
+
+You don't want this:
+
+def get_users():
+    engine = create_engine(...)
+
+for every request.
+
+That would repeatedly create database infrastructure unnecessarily.
+
+2. What is a Session?
+
+A Session is the object used by your application to perform database work.
+
+For example:
+
+session.exec(...)
+session.add(...)
+session.commit()
+session.delete(...)
+
+So:
+
+Engine
+   ↓
+provides database connectivity infrastructure
+
+Session
+   ↓
+performs database work for your request/use case

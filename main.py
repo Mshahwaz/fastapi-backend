@@ -1,20 +1,19 @@
-from fastapi import FastAPI, HTTPException , status, Header, Depends, Request, BackgroundTasks
-from pydantic import Field as pyField , BaseModel
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import FastAPI, HTTPException , status, Header, Depends, Request
+from pydantic import BaseModel
+from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta, timezone
-from jose import jwt, JWTError
 import time
 import httpx
 import logging
-from database import engine, create_db_and_table
+from database import create_db_and_table
 from models import User
 from routes.users import router as users_router
+from routes.auth import router as auth_router
 from dependencies.auth import (
     get_current_user,
     require_admin
 )
-from routes.auth import router as auth_router
+
 
 
 #Logbasicconfig
@@ -30,20 +29,9 @@ app=FastAPI()
 app.include_router(users_router)
 app.include_router(auth_router)
 
-security=HTTPBearer()
 
 #Creating DB and Tables
 create_db_and_table()
-
-
-##### For BG TASK ####
-def send_email():
-    print("Sending Email...")
-    time.sleep(5)
-    print("Email Sent.!")
-######################
-
-
 
 #Protected Endpoint (Accessible only for authenticated Users (anyone))
 @app.get("/protected")
@@ -80,7 +68,7 @@ async def global_exception_handler(
         }
     )
 
-#Middleware to measure API query total time
+#Middleware to measure total request processing time 
 @app.middleware("http")
 async def request_timer(request: Request,call_next):
     
@@ -122,7 +110,7 @@ async def get_external_user(user_id: int):
         async with httpx.AsyncClient() as client:
 
             response = await client.get(
-                f"https://jsonplaceholder.tpicode.com/uses",
+                f"https://jsonplaceholder.typicode.com/users/{user_id}",
                 timeout=5.0
             )
             response.raise_for_status()
