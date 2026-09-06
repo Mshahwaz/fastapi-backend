@@ -8,11 +8,13 @@ from config import (
     ALGORITHM
 )
 from jose import jwt, JWTError
+from database import get_session
 
 security=HTTPBearer()
 
 def get_current_user(
-credentials: HTTPAuthorizationCredentials = Depends(security)
+credentials: HTTPAuthorizationCredentials = Depends(security),
+session: Session = Depends(get_session)
     ):
     token=credentials.credentials
     try:
@@ -33,19 +35,19 @@ credentials: HTTPAuthorizationCredentials = Depends(security)
             status_code=401,
             detail="Invalid or Expired token"
         )
-    with Session(engine) as session:
-        statement=select(User).where(
-            User.username == username
+    # with Session(engine) as session:
+    statement=select(User).where(
+        User.username == username
+    )
+
+    db_user=session.exec(statement).first()
+
+    if db_user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="User not found"
         )
-
-        db_user=session.exec(statement).first()
-
-        if db_user is None:
-            raise HTTPException(
-                status_code=401,
-                detail="User not found"
-            )
-        return db_user
+    return db_user
 
 def require_admin(
     current_user: User = Depends(get_current_user)

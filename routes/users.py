@@ -6,6 +6,7 @@ from schema import (
     # LoginRequest
 )
 from models import User  
+from sqlmodel import Session
 import logging
 from dependencies.auth import require_admin
 from services.user_service import (
@@ -16,6 +17,7 @@ from services.user_service import (
     patch_user_with_userid,
     delete_user
 )
+from database import get_session
 
 logging.basicConfig(
     level=logging.INFO
@@ -30,8 +32,8 @@ router=APIRouter()
     status_code=status.HTTP_201_CREATED,
     response_model=UserResponse
     )
-def register_user(user: User_create,background_task: BackgroundTasks):
-    response=create_user(user)
+def register_user(user: User_create,session: Session = Depends(get_session)):
+    response=create_user(user,session)
     return response
     #-- whole logic will be performed by user-service--#(tested)
 
@@ -41,8 +43,8 @@ def register_user(user: User_create,background_task: BackgroundTasks):
     "/users",
     response_model=list[UserResponse]
     )
-def get_users():
-    response=get_all_users()
+def get_users(session: Session = Depends(get_session)):
+    response=get_all_users(session)
     return response
     #-- whole logic will be performed by user-service--#(tested)
 
@@ -51,8 +53,8 @@ def get_users():
     "/users/{user_id}",
     response_model=UserResponse
     )
-def get_user(user_id: int):
-    response=get_single_user(user_id)
+def get_user(user_id: int,session: Session = Depends(get_session)):
+    response=get_single_user(user_id,session)
     return response
     #-- whole logic will be performed by user-service--#(tested)
 
@@ -63,8 +65,8 @@ def get_user(user_id: int):
     response_model=UserResponse,
     status_code=status.HTTP_200_OK
     )
-def update_user(userobj: User_create,user_id: int):
-    response=update_user_with_id(user_id,userobj)
+def update_user(userobj: User_create,user_id: int,session: Session = Depends(get_session)):
+    response=update_user_with_id(user_id,userobj,session)
     return response
     #-- whole logic will be performed by user-service--#(tested)
 
@@ -75,14 +77,14 @@ def update_user(userobj: User_create,user_id: int):
     response_model=UserResponse,
     status_code=status.HTTP_200_OK
     )
-def patch_user(userobj: UserUpdate,user_id: int):
-    response=patch_user_with_userid(userobj,user_id)
+def patch_user(userobj: UserUpdate,user_id: int,session: Session = Depends(get_session)):
+    response=patch_user_with_userid(userobj,user_id,session)
     return response
     #-- whole logic will be performed by user-service--#(tested)
 
 
 @router.delete("/users/{user_id}")
-def del_user(user_id: int,current_user: User = Depends(require_admin)):
-    response=delete_user(user_id)
+def del_user(user_id: int,current_user: User = Depends(require_admin),session: Session = Depends(get_session)):
+    response=delete_user(user_id,session)
     return response
     #-- whole logic will be performed by user-service--#(tested)
