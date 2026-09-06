@@ -1,7 +1,5 @@
 __pycache__/
 
-*.txt
-
 logging_demo.py
 
 .env
