@@ -22,3 +22,7 @@ To stop and remove compose stack (remove containers/network/anonymous volumes)
 To stop and remove containers and volumes (remove containers/network/anonymous volumes/named volumes)
 
 `docker compose down -v`
+
+To check health status of service
+
+`docker inspect compose-backend-postgres --format="{{.State.Health.Status}}"`
