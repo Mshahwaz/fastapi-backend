@@ -17,5 +17,10 @@ services:
       POSTGRES_USER: backend-svc-user
       POSTGRES_PASSWORD: backend-svc-pass
       POSTGRES_DB: backend_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     # ports:
     #   - "5432:5432"
+
+volumes:
+  postgres_data:
