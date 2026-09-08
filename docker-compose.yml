@@ -5,8 +5,8 @@ services:
     image: certbot/certbot
     container_name: compose-backend-certbot
     volumes:
-      - .certbot/www:/var/www/certbot
-      - .certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
   nginx:
     image: nginx:alpine
     container_name: compose-backend-nginx
