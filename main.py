@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import time
 import httpx
 import logging
-from database import create_db_and_table
+# from database import create_db_and_table (alembic)
 from models import User
 from routes.users import router as users_router
 from routes.auth import router as auth_router
@@ -31,7 +31,7 @@ app.include_router(auth_router)
 
 
 #Creating DB and Tables
-create_db_and_table()
+# create_db_and_table() Alembic take care of this
 
 #Protected Endpoint (Accessible only for authenticated Users (anyone))
 @app.get("/protected")
@@ -160,3 +160,16 @@ async def send_to_external_api(user_data: External_api_users):
     response_payload=response.json()
     response_payload.setdefault("status","Query Successfull")
     return response_payload
+
+@app.get("/health/live",status_code=status.HTTP_200_OK)
+def health_check():
+    return {
+        "status": "live"
+    }
+
+
+@app.get("/health/ready",status_code=status.HTTP_200_OK)
+def health_check():
+    return {
+        "status": "ready"
+    }
