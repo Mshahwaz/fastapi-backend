@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, Field
+from sqlalchemy import UniqueConstraint
 # from pydantic import Field as pyField, BaseModel
 
 # class User_create(SQLModel):
@@ -12,9 +13,10 @@ class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
     age: int 
-    username: str
+    username: str = Field(unique=True)
     password: str
     role: str = "user"
+    email: str | None = Field(default=None, unique=True)
 
 # #RESPONSE MODEL for client query response
 # class UserResponse(SQLModel):

@@ -5,6 +5,7 @@ from database import engine
 from models import User
 from pwdlib import PasswordHash
 import logging
+from sqlalchemy.exc import IntegrityError
 
 logging.basicConfig(
     level=logging.INFO
@@ -26,10 +27,30 @@ def create_user(user: User_create,session: Session):
         age = user.age,
         username = user.username,
         password = hashed_password,
-        role = "user"
+        role = "user",
+        email = user.email
     ) #creating DB user obj mapped to user table
+    
     session.add(db_user)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback() # rollback() undoes the current uncommitted transaction - Abandon the failed transaction and return the session to a usable state.
+        error=str(exc.orig)
+        if "user_username_key" in error:
+            raise HTTPException(
+                status_code=409,
+                detail="Username already taken"
+            )
+        if "user_email_key" in error:
+            raise HTTPException(
+                status_code=409,
+                detail="Email Already registered"
+            )
+        # raise HTTPException(
+        #     status_code=409,
+        #     detail="Email Already registered"
+        # )
     session.refresh(db_user)
     return db_user
 

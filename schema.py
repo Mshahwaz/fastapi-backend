@@ -7,6 +7,7 @@ class User_create(SQLModel):
     age: int = pyField(ge=0,le=120)
     username: str
     password: str
+    email: str | None = None
 
 #RESPONSE schema for client query response
 class UserResponse(SQLModel):
@@ -14,6 +15,7 @@ class UserResponse(SQLModel):
     name: str
     age: int
     username: str
+    email: str | None = None
 
 #Update user schema
 class UserUpdate(SQLModel):
